@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.yourname.shulkerpickblock.compat.litematica.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "plugin": "com.yourname.shulkerpickblock.compat.litematica.LitematicaMixinPlugin",
+  "client": [
+    "InventoryUtilsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

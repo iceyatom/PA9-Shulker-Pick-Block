@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.yourname.shulkerpickblock.mixin.client",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "MinecraftClientPickBlockMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "shulkerpickblock",
+  "version": "${version}",
+  "name": "ShulkerPickBlock",
+  "description": "Pick block from shulker boxes in your inventory without placing them. Extends vanilla middle-click pick block to scan inventory shulker boxes (and the off-hand), with optional Litematica Easy Place integration.",
+  "authors": [
+    "Your Name"
+  ],
+  "contact": {
+    "homepage": "",
+    "sources": ""
+  },
+  "license": "MIT",
+  "icon": "assets/shulkerpickblock/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.yourname.shulkerpickblock.ShulkerPickBlockClient"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "shulkerpickblock.client.mixins.json",
+      "environment": "client"
+    },
+    {
+      "config": "shulkerpickblock.litematica.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "fabric-api": ">=0.150.0",
+    "minecraft": "~26.1.2",
+    "java": ">=25"
+  },
+  "suggests": {
+    "litematica": "*",
+    "modmenu": "*"
+  }
+}

@@ -1,0 +1,81 @@
+plugins {
+    id 'fabric-loom' version '1.17.11'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    // The Litematica compat layer uses @Pseudo soft-target mixins (string class
+    // targets, no imports), so NO compile-time Litematica dependency is required.
+    // If you ever decide to compile directly against Litematica, add masa's maven here.
+    mavenCentral()
+}
+
+loom {
+    // Mirrors the Trade Reorder layout: a dedicated `client` source set holds all
+    // client-only code. Everything in this mod is client-side (SRS §3.1).
+    splitEnvironmentSourceSets()
+
+    mods {
+        "shulkerpickblock" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+
+    // SRS §3.2 / §7.3: only widen access where a compile-time error is actually hit.
+    // None encountered with the current design, so this stays commented out.
+    // accessWidenerPath = file("src/main/resources/shulkerpickblock.accesswidener")
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+
+    // SRS-preferred mapping set. NOTE: a Yarn build for 26.x must be available to your
+    // Gradle (it is published for real 26.1.2 toolchains but was NOT reachable from the
+    // sandbox this was authored in — see CLAUDE.md "Build Environment Findings").
+    // Set `yarn_mappings` in gradle.properties to the exact build your Trade Reorder mod
+    // uses. If you prefer Mojang official mappings, comment the line below and use:
+    //   mappings loom.officialMojangMappings()
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+java {
+    // MC 26.1.x requires Java 25 for both compilation and the Gradle toolchain (SRS §2).
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+
+    withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
