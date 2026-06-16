@@ -8,9 +8,11 @@ ShulkerPickBlock scans the shulker boxes you're carrying (including your off-han
 out, and puts it in your hand — **no need to place the shulker box down first.** It also hooks
 **Litematica's Easy Place** so shulker-stored blocks are supplied automatically while you build.
 
-> Status: feature-complete to the spec and **compiles/builds cleanly against Minecraft 1.21.11**
-> (the nearest version with public mappings). Building against 26.1.2 itself requires that version's
-> deobfuscation mappings on your machine — see [Building](#building) and `CLAUDE.md`.
+> Status: **built and verified in-game on Minecraft 26.1.2** (Fabric Loader 0.19.2, Fabric API
+> 0.151.0+26.1.2). Vanilla pick-block-from-shulker works in single-player survival and creative, and
+> the **Litematica Easy Place** integration is confirmed working against Litematica
+> `0.27.4` (the sakura-ryoko 26.x fork). Builds with **Mojang official mappings** — see
+> [Building](#building) and `CLAUDE.md`.
 
 ## Features
 - **Pick block from inventory shulker boxes** — main inventory (slots 0–35) and the off-hand.
@@ -65,13 +67,17 @@ File: `.minecraft/config/shulkerpickblock.toml` (created on first run).
 | `litematica_compat` | bool | `true` | Enable Easy Place integration (ignored if Litematica absent). |
 | `debug_logging` | bool | `false` | Verbose scan diagnostics. Dev use only. |
 
-## Important limitation — survival multiplayer
-This mod fully works in **single-player and creative**, where the change can be made authoritative.
-**On vanilla survival multiplayer servers it cannot truly sync**: Minecraft provides no packet to
-modify an item-form shulker box's contents (only a *placed* box has a server-side container). In
-survival multiplayer the extraction is client-side prediction and the server will revert it. This
-is a Minecraft protocol limitation, not a bug — a real fix would need a server-side companion mod
-(out of scope). See `CLAUDE.md` for the full technical explanation.
+## Important limitation — remote (vanilla) servers
+This mod is **fully authoritative in single-player and on a LAN world you host** — in both
+**survival and creative**. The extraction is mirrored onto the integrated server's inventory (it
+runs in the same process), so the item really moves and stays put rather than reverting.
+
+**On a *remote* vanilla server it cannot truly sync** in survival: Minecraft provides no packet to
+modify an item-form shulker box's contents (only a *placed* box has a server-side container), so the
+extraction is client-side prediction only and the server will revert it. (Remote **creative** still
+works, via creative-mode slot packets.) This is a Minecraft protocol limitation, not a bug — a real
+fix for remote survival would need a server-side companion mod (out of scope). See `CLAUDE.md` for
+the full technical explanation.
 
 ## Building
 Requires **JDK 25** and **Gradle 9.5+** (Fabric Loom 1.17.11 needs Gradle plugin API 9.5.0+).
@@ -84,25 +90,25 @@ gradlew.bat build                        # Windows   (./gradlew build on macOS/L
 # -> build/libs/shulker-pick-block-1.0.0.jar
 ```
 
-**Mappings note.** At the time of writing, deobfuscation mappings for the 26.x calendar versions
-were not published to the public Fabric/Mojang maven (Yarn, intermediary, and Mojang official all
-stop at 1.21.11). You need 26.1.2 mappings available locally (e.g. from your existing 26.1.2 dev
-setup). Set `yarn_mappings` in `gradle.properties` to your actual 26.1.2 Yarn build, or switch
-`build.gradle` to `loom.officialMojangMappings()` if your 26.1.2 toolchain uses Mojang mappings.
-
-The code is verified to compile/build against MC 1.21.11 Yarn as a proxy:
-```bash
-./gradlew build -Pminecraft_version=1.21.11 -Pyarn_mappings=1.21.11+build.6 -Pfabric_version=0.141.4+1.21.11
-```
+**Mappings note.** This builds against **26.1.2 with Mojang official mappings**
+(`loom.officialMojangMappings()` in `build.gradle`) — the 26.x runtime uses Mojang names, so the
+source is written in Mojmap (`Minecraft`, `MultiPlayerGameMode`, `ServerPlayer`, etc.). Yarn builds
+for 26.x are not published, so do **not** set `yarn_mappings`. If `gradlew build` reports a missing
+mappings configuration, ensure `build.gradle`'s `dependencies` block contains
+`mappings loom.officialMojangMappings()`.
 
 ## Compatibility
 - Survival and creative game modes (see survival-multiplayer note above).
 - No server-side mod required for single-player/creative; designed not to disturb other
   inventory mods (e.g. Inventory Profiles Next, Mouse Tweaks) that don't intercept pick block at
   the same point.
-- Litematica integration is version-fragile by nature (Litematica has no stable public API). The
-  tested Litematica build should be pinned; the compat layer disables itself rather than crash if
-  the internals don't match.
+- Litematica integration is version-fragile by nature (Litematica has no stable public API). It
+  works by pre-staging the needed item out of a shulker box at the head of Litematica's own
+  `InventoryUtils.schematicWorldPickBlock` — the single method both Easy Place and schematic
+  pick-block route through — so Litematica's normal lookup then finds it loose and swaps it to hand.
+  **Verified against Litematica `litematica-fabric-26.1.2-0.27.4` (sakura-ryoko fork).** Pin your
+  tested Litematica build; the compat layer disables itself rather than crash if the internals don't
+  match. (Litematica source for 26.x lives in the sakura-ryoko fork, not maruohon upstream.)
 
 ## License
 MIT — see [LICENSE](LICENSE).

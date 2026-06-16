@@ -91,8 +91,15 @@ Compile-checked names are **bold** = confirmed vs 1.21.11 Yarn; the rest are run
 version-fragile and need re-checking on 26.1.2:
 - ⚠️ Mixin target method **`MinecraftClient.doItemPick`** — name is runtime-resolved by Mixin; the
   refmap built clean vs 1.21.11 but confirm the method still exists/name in 26.1.2.
-- ⚠️ Litematica `InventoryUtils.setPickedItemToHand(ItemStack, MinecraftClient)` — **best guess**,
-  unverifiable without the pinned Litematica build. `require=0` makes a wrong guess a silent no-op.
+- ✅/⚠️ Litematica Easy Place entry **confirmed** against `sakura-ryoko/litematica` branch `26.2`
+  (the active MC 26.x fork — upstream `maruohon` only goes to 1.21.1): Easy Place item supply runs
+  through `WorldUtils.doEasyPlaceAction` → `InventoryUtils.schematicWorldPickBlock(ItemStack, BlockPos,
+  Level, Minecraft)`, then aborts if `EntityUtils.getUsedHandForItem` returns null. The mod now hooks
+  `schematicWorldPickBlock` at HEAD (`InventoryUtilsMixin`), **matched by name only** so it binds under
+  intermediary runtime names (the old `setPickedItemToHand` descriptor hooks used `remap=false` +
+  Mojmap descriptors and never bound in production — left in place but effectively dead). Confirm the
+  installed Litematica build is the sakura-ryoko fork and that `schematicWorldPickBlock` still has a
+  single overload; a second overload would require re-adding a descriptor to disambiguate.
 - ⚠️ `HudRenderCallback` — **deprecated** in 1.21.x in favour of `rendering.v1.hud.HudElementRegistry`
   /`HudElement` (different "extract render state" model). May be **removed** in 26.1.2. If the HUD
   fails to compile, port to `HudElementRegistry`. Cosmetic feature, low risk.
@@ -126,7 +133,16 @@ version-fragile and need re-checking on 26.1.2:
 2. **Mod Menu config screen (FR-25) is deferred** — config is fully usable via TOML +
    `/shulkerpickblock reload`. A Mod Menu screen needs a `modCompileOnly` Mod Menu dep + a hand-built
    or Cloth Config screen; not implemented. TODO.
-3. **Litematica method target unverified** (see VERIFY list).
+3. **Litematica Easy Place hook** targets the confirmed `InventoryUtils.schematicWorldPickBlock`
+   (explicit Mojmap descriptor — the 26.x runtime uses Mojang names, verified by `javap` on the
+   installed `litematica-fabric-26.1.2-0.27.4.jar`). **Root-cause bug found & fixed:** the mixin was
+   armed but never applied — log showed `target fi.dy.masa.litematica.util.InventoryUtils was loaded
+   too early`, because `LitematicaMixinPlugin.isClassPresent` used `Class.forName` (which *loads* the
+   class) during mixin bootstrap. Fixed to a `getResource(".class")` presence check that doesn't load
+   the class. **Lesson: never `Class.forName` a `@Pseudo` soft-target's class in a mixin plugin.**
+   Possible follow-up: a server-thread race in single-player between our `server.execute` extraction
+   and the Easy Place placement packet — pre-staging happens at `schematicWorldPickBlock` HEAD (queued
+   before the place packet is sent), so it should win, but watch for occasional first-click misses.
 4. **SRS says "six shulker colour variants" (FR-09)** — actually vanilla has 17 (16 dyed + plain).
    Code uses `instanceof ShulkerBoxBlock`, which covers *all* variants correctly.
 

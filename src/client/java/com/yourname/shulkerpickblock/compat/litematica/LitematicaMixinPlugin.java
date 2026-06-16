@@ -30,6 +30,10 @@ public class LitematicaMixinPlugin implements IMixinConfigPlugin {
         boolean classPresent = modPresent && isClassPresent(LITEMATICA_TARGET);
         enabled = modPresent && classPresent;
 
+        // DIAGNOSTIC: confirm whether the Litematica mixins are armed at all.
+        ShulkerPickBlock.LOGGER.info("[Litematica] mixin plugin: modPresent={}, targetClassPresent={}, "
+                + "mixinsEnabled={}", modPresent, classPresent, enabled);
+
         if (modPresent && !classPresent) {
             ShulkerPickBlock.LOGGER.warn("Litematica is present but {} was not found — Easy Place "
                     + "compat disabled (Litematica internals may have changed for this build).",
@@ -42,13 +46,19 @@ public class LitematicaMixinPlugin implements IMixinConfigPlugin {
         return enabled;
     }
 
+    /**
+     * Checks whether the target class is on the classpath <em>without loading it</em>.
+     *
+     * <p>This MUST NOT use {@code Class.forName}: doing so during the mixin-bootstrap phase forces
+     * the target ({@code fi.dy.masa.litematica.util.InventoryUtils}) to be defined before Mixin is
+     * ready to transform it, which makes our {@code @Pseudo} mixin fail with "target was loaded too
+     * early" and silently never apply. Looking the class up as a {@code .class} resource answers the
+     * presence question while leaving the class unloaded, so Mixin can transform it when Litematica
+     * (or our injector) loads it normally later.
+     */
     private static boolean isClassPresent(String className) {
-        try {
-            Class.forName(className, false, LitematicaMixinPlugin.class.getClassLoader());
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
+        String resourcePath = className.replace('.', '/') + ".class";
+        return LitematicaMixinPlugin.class.getClassLoader().getResource(resourcePath) != null;
     }
 
     // --- Remaining IMixinConfigPlugin methods: defaults ---

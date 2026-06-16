@@ -55,7 +55,13 @@ public final class LitematicaCompat {
      *                      target signature did not match — handled defensively, FR-22/NFR-04)
      */
     public static void handlePick(ItemStack requiredStack) {
+        boolean debug = ModConfig.get().debugLogging;
         try {
+            // DIAGNOSTIC: prove the Litematica hook actually fired and reached our code.
+            if (debug) {
+                ShulkerPickBlock.LOGGER.info("[Litematica] handlePick fired: stack={}, active={}",
+                        requiredStack, isActive());
+            }
             if (!isActive() || requiredStack == null || requiredStack.isEmpty()) {
                 return;
             }
@@ -66,9 +72,17 @@ public final class LitematicaCompat {
             Item item = requiredStack.getItem();
             if (ShulkerInventoryHelper.containsDirectly(client.player.getInventory(), item,
                     ModConfig.get().scanOffhand)) {
+                if (debug) {
+                    ShulkerPickBlock.LOGGER.info("[Litematica] {} already loose in inventory — deferring "
+                            + "to Litematica's own lookup.", item);
+                }
                 return; // Litematica will find it normally.
             }
-            ShulkerExtractionService.extract(client, item);
+            boolean extracted = ShulkerExtractionService.extract(client, item);
+            if (debug) {
+                ShulkerPickBlock.LOGGER.info("[Litematica] extract({}) -> {}", item,
+                        extracted ? "pulled from a shulker box" : "not found in any shulker box");
+            }
         } catch (RuntimeException e) {
             // Never let a compat hiccup break Litematica or crash the client (FR-22 / NFR-04).
             ShulkerPickBlock.LOGGER.warn("Litematica compat handlePick failed; ignoring.", e);
