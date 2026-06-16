@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "id": "shulkerpickblock",
   "version": "${version}",
-  "name": "ShulkerPickBlock",
+  "name": "PA9 Shulker Pick Block",
   "description": "Pick block from shulker boxes in your inventory without placing them. Extends vanilla middle-click pick block to scan inventory shulker boxes (and the off-hand), with optional Litematica Easy Place integration.",
   "authors": [
-    "Your Name"
+    "PersonalAtom9"
   ],
   "contact": {
-    "homepage": "",
+    "homepage": "https://www.youtube.com/@PersonalAtom9",
     "sources": ""
   },
   "license": "MIT",
