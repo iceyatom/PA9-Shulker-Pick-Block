@@ -73,9 +73,16 @@ If 26.1.2 uses Mojang mappings instead of Yarn, see the caveat above.
   deps; unit-testable. Returns an `ExtractionResult` plan from copies; never mutates live inventory.
 - `util/ExtractionResult` — record: source player slot, internal slot, extracted stack, updated box.
 - `util/HotbarUsageTracker` — per-tick LRU tracking for the `LRU` hotbar strategy.
-- `inventory/ShulkerExtractionService` — **commits** the plan: chooses hotbar slot (FR-06), writes
-  inventory, syncs (creative = authoritative via `clickCreativeStack`; survival = client prediction),
-  fires HUD. Single try/catch fallback point (NFR-04). One entry point for both pick paths (NFR-06).
+- `inventory/ShulkerExtractionService` — **commits** the plan: chooses hotbar slot (FR-06) and does
+  the mutation in one shared `applyExtraction` used by both the client prediction and the
+  authoritative integrated-server re-apply (keeps them deterministic/in sync). **Item conservation:**
+  if the destination slot is occupied, the displaced item is swapped into the box's vacated internal
+  slot (`ShulkerInventoryHelper.withInternalItem`) instead of being overwritten — except a held
+  shulker box, which can't be nested, so the pick aborts without mutating. Sync: single-player/LAN =
+  integrated server authoritative; remote creative = creative slot packets; remote survival =
+  prediction only. Player notices go through `PickBlockHud.showMessage` (NOT `displayClientMessage` —
+  that method is absent from the 26.1.2 mapping; the HUD render path is the verified way to show
+  text). Single try/catch fallback (NFR-04); one entry point for both pick paths (NFR-06).
 - `mixin/client/MinecraftClientPickBlockMixin` — vanilla hook. **Targets `MinecraftClient.doItemPick()`
   at TAIL**, not `ClientPlayerInteractionManager` as SRS §7.1 guessed (that method only fires on the
   found-in-inventory path). Acts only when vanilla couldn't supply the item.

@@ -20,6 +20,10 @@ out, and puts it in your hand — **no need to place the shulker box down first.
   the box in the world.
 - **Smart source selection** — prefers the box with the largest stack of the target item so you
   don't fragment stacks (configurable).
+- **Never destroys your held item** — if the destination hotbar slot is occupied (e.g. your
+  inventory is completely full), the previously-held item is swapped into the box's just-vacated
+  slot instead of being overwritten, with an on-screen notice. If the held item is itself a shulker
+  box (which can't be nested), the pick is declined rather than risk losing it.
 - **Configurable hotbar placement** — `VANILLA`, `CURRENT_SLOT`, or `LRU` (least-recently-used).
 - **Litematica Easy Place compatibility** — optional; auto-detected; supplies consecutive block
   types from different boxes with no extra clicks. Safely disables itself if Litematica's internals

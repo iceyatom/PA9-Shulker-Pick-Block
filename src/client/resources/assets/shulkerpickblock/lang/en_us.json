@@ -1,4 +1,6 @@
 {
   "hud.shulkerpickblock.picked": "Pulled %s from a shulker box",
+  "message.shulkerpickblock.swapped_into_box": "Stored %s in the shulker box to make room",
+  "message.shulkerpickblock.hand_full": "No room to pick %s — your held shulker box can't be stored",
   "text.shulkerpickblock.config.title": "ShulkerPickBlock"
 }

@@ -134,6 +134,21 @@ public final class ShulkerInventoryHelper {
         return new ExtractionResult(playerSlot, internalSlot, extracted, updatedBox);
     }
 
+    /**
+     * Returns a copy of {@code box} with {@code stack} placed into internal slot {@code slot}
+     * (expected to be empty — e.g. the slot a prior extraction just vacated). Used to swap a
+     * displaced held item back into the box instead of destroying it when the destination hotbar
+     * slot is already occupied and the inventory has no room. Leaves a valid shulker box item.
+     */
+    public static ItemStack withInternalItem(ItemStack box, int slot, ItemStack stack) {
+        NonNullList<ItemStack> contents = toStacks(box.getOrDefault(
+                DataComponents.CONTAINER, ItemContainerContents.EMPTY));
+        contents.set(slot, stack.copy());
+        ItemStack updated = box.copy();
+        updated.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(contents));
+        return updated;
+    }
+
     /** True if the item is any vanilla shulker box (covers all dyed + uncoloured variants, FR-09). */
     public static boolean isShulkerBox(ItemStack stack) {
         return stack != null

@@ -10,11 +10,13 @@ import com.yourname.shulkerpickblock.util.ShulkerInventoryHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 
 import java.util.Optional;
@@ -78,30 +80,49 @@ public final class ShulkerExtractionService {
                 return false;
             }
 
-            Optional<ExtractionResult> maybe = ShulkerInventoryHelper.findAndExtract(
-                    inventory, targetItem, config.scanOffhand, config.preferLargestStack);
-            if (maybe.isEmpty()) {
+            int hotbarSlot = chooseHotbarSlot(inventory, config.hotbarSlotStrategy);
+
+            // Client-side prediction; the outcome also drives server sync and the player messages.
+            Outcome outcome = applyExtraction(inventory, targetItem, hotbarSlot, config);
+            if (outcome == null) {
                 if (config.debugLogging) {
                     ShulkerPickBlock.LOGGER.info("No shulker box contained {}", targetItem);
                 }
                 return false; // FR-08: fall back to vanilla
             }
+            if (outcome.aborted()) {
+                // The destination slot holds a shulker box and there's no room — a shulker box can't
+                // be nested, so we declined rather than destroy it. Tell the player and defer.
+                PickBlockHud.showMessage(Component.translatable("message.shulkerpickblock.hand_full",
+                        outcome.result().extractedStack().getHoverName()));
+                if (config.debugLogging) {
+                    ShulkerPickBlock.LOGGER.info("Aborted pick of {}: held shulker box can't be stored "
+                            + "in the source box (inventory full).", targetItem);
+                }
+                return false;
+            }
 
-            ExtractionResult result = maybe.get();
-            int hotbarSlot = chooseHotbarSlot(inventory, config.hotbarSlotStrategy);
-
-            commit(client, interaction, inventory, result, hotbarSlot, targetItem, config);
+            ExtractionResult result = outcome.result();
 
             // FR-05: make it the active held item.
             setSelectedSlot(client, player, inventory, hotbarSlot);
             ShulkerPickBlockClient.hotbarTracker().touch(hotbarSlot);
 
+            // Make the change authoritative (single-player server / creative packets / prediction).
+            syncAuthoritative(client, interaction, outcome, hotbarSlot, targetItem, config);
+
             if (config.showHudMessage) {
                 PickBlockHud.show(result.extractedStack());
             }
+            if (outcome.swappedIntoBox()) {
+                // Item conservation: the previously-held item went into the box's vacated slot.
+                PickBlockHud.showMessage(Component.translatable("message.shulkerpickblock.swapped_into_box",
+                        outcome.displaced().getHoverName()));
+            }
             if (config.debugLogging) {
-                ShulkerPickBlock.LOGGER.info("Pulled {} from shulker in slot {} (internal {}) -> hotbar {}",
-                        targetItem, result.playerSlot(), result.internalSlot(), hotbarSlot);
+                ShulkerPickBlock.LOGGER.info("Pulled {} from shulker slot {} (internal {}) -> hotbar {}{}",
+                        targetItem, result.playerSlot(), result.internalSlot(), hotbarSlot,
+                        outcome.swappedIntoBox() ? " (swapped held item into box)" : "");
             }
             return true;
         } catch (RuntimeException e) {
@@ -112,42 +133,75 @@ public final class ShulkerExtractionService {
         }
     }
 
+    /** What a single {@link #applyExtraction} did, for driving server sync and player messages. */
+    private record Outcome(ExtractionResult result, ItemStack finalBox, ItemStack displaced, boolean aborted) {
+        /** True when a previously-held item was swapped into the box to avoid destroying it. */
+        boolean swappedIntoBox() {
+            return !displaced.isEmpty();
+        }
+    }
+
     /**
-     * Writes the extraction into the inventory and makes it stick.
+     * Applies one shulker extraction to {@code inv} <em>in place</em>, conserving items.
      *
-     * <p>The client-side write is only a <em>prediction</em>: the server owns the inventory and will
-     * reconcile (revert) any slot the client changed on its own — that is the "ghost item that jumps
-     * back into the box" symptom. To make the change authoritative we mutate the server's inventory
-     * too, choosing the only mechanism that actually works for each connection:
+     * <p>If the destination hotbar slot already holds an item, simply overwriting it would delete
+     * that item (the bug this guards against, hit when the inventory is completely full). Instead we
+     * swap the displaced item into the box's just-vacated internal slot — the slot the extracted item
+     * came from — so nothing is lost. The one item that can't go there is another shulker box (vanilla
+     * forbids nesting): in that case we mutate nothing and report {@link Outcome#aborted()}, leaving
+     * the held box untouched.
+     *
+     * <p>This is the single source of truth for the mutation, shared by the client prediction and the
+     * authoritative integrated-server apply. Because it re-scans deterministically and reads the
+     * displaced item from the same slot, both sides compute identical results and stay in sync.
+     *
+     * @return the outcome, or {@code null} if no shulker box held {@code targetItem}
+     */
+    private static Outcome applyExtraction(Inventory inv, Item targetItem, int hotbarSlot, ModConfig config) {
+        Optional<ExtractionResult> maybe = ShulkerInventoryHelper.findAndExtract(
+                inv, targetItem, config.scanOffhand, config.preferLargestStack);
+        if (maybe.isEmpty()) {
+            return null;
+        }
+        ExtractionResult result = maybe.get();
+
+        ItemStack displaced = inv.getItem(hotbarSlot).copy();
+        ItemStack finalBox = result.updatedShulkerStack();
+        boolean swappedIntoBox = false;
+
+        if (!displaced.isEmpty()) {
+            if (ShulkerInventoryHelper.isShulkerBox(displaced)) {
+                // A shulker box can't be stored inside another shulker box — abort, don't delete it.
+                return new Outcome(result, finalBox, ItemStack.EMPTY, true);
+            }
+            finalBox = ShulkerInventoryHelper.withInternalItem(
+                    result.updatedShulkerStack(), result.internalSlot(), displaced);
+            swappedIntoBox = true;
+        }
+
+        inv.setItem(result.playerSlot(), finalBox);
+        inv.setItem(hotbarSlot, result.extractedStack());
+        return new Outcome(result, finalBox, swappedIntoBox ? displaced : ItemStack.EMPTY, false);
+    }
+
+    /**
+     * Makes the already-applied client prediction authoritative, by whichever mechanism the
+     * connection allows:
      * <ul>
-     *   <li><b>Single-player / LAN host</b> — the integrated server lives in this same JVM, so we
-     *       hand the same extraction to its thread and apply it to the authoritative
-     *       {@link ServerPlayer} inventory. The server then broadcasts the real slots back and the
-     *       prediction is confirmed instead of reverted. This is the path that fixes the bug.</li>
-     *   <li><b>Remote server, creative</b> — no integrated server here, but creative slot packets
-     *       are authoritative on vanilla servers, so we send those.</li>
-     *   <li><b>Remote vanilla server, survival</b> — genuinely unsupported: vanilla has no packet
-     *       that drains an item-form shulker box (see class docs). Prediction only; will revert.</li>
+     *   <li><b>Single-player / LAN host</b> — re-apply on the integrated server's thread.</li>
+     *   <li><b>Remote server, creative</b> — creative slot packets (the final box, which may now hold
+     *       the swapped-in item, plus the extracted stack).</li>
+     *   <li><b>Remote vanilla server, survival</b> — unsupported; prediction only (see class docs).</li>
      * </ul>
      */
-    private static void commit(Minecraft client,
-                               MultiPlayerGameMode interaction,
-                               Inventory inventory,
-                               ExtractionResult result,
-                               int hotbarSlot,
-                               Item targetItem,
-                               ModConfig config) {
-        // Always update the client-side view first so the change is visible immediately.
-        inventory.setItem(result.playerSlot(), result.updatedShulkerStack());
-        inventory.setItem(hotbarSlot, result.extractedStack());
-
+    private static void syncAuthoritative(Minecraft client, MultiPlayerGameMode interaction,
+                                          Outcome outcome, int hotbarSlot, Item targetItem, ModConfig config) {
+        ExtractionResult result = outcome.result();
         MinecraftServer server = client.getSingleplayerServer();
         if (server != null) {
-            // Single-player / LAN host: make the integrated server's inventory match (authoritative).
             syncToIntegratedServer(server, client.player.getUUID(), targetItem, hotbarSlot, config);
         } else if (interaction.getPlayerMode() == GameType.CREATIVE) {
-            // Remote server in creative: creative slot packets are honoured by vanilla.
-            interaction.handleCreativeModeItemAdd(result.updatedShulkerStack(), toScreenSlotId(result.playerSlot()));
+            interaction.handleCreativeModeItemAdd(outcome.finalBox(), toScreenSlotId(result.playerSlot()));
             interaction.handleCreativeModeItemAdd(result.extractedStack(), toScreenSlotId(hotbarSlot));
         } else if (ShulkerPickBlock.LOGGER.isDebugEnabled() || config.debugLogging) {
             ShulkerPickBlock.LOGGER.warn("Survival extraction against a remote server is client-side "
@@ -156,12 +210,10 @@ public final class ShulkerExtractionService {
     }
 
     /**
-     * Applies the extraction to the authoritative server inventory on the integrated server's own
-     * thread. Re-scans the server's inventory (rather than trusting the client's copy) so the move
-     * is computed from authoritative state — this both prevents duplication and, because the scan is
-     * deterministic, lands on exactly the same slots the client predicted, so the player sees no
-     * flicker. After the write, {@code broadcastChanges} pushes the confirmed slots back to the
-     * client immediately rather than waiting for the next inventory tick.
+     * Re-applies the extraction on the integrated server's own thread against its authoritative
+     * inventory ({@link #applyExtraction}, so the displaced-item swap is handled identically). The
+     * deterministic re-scan lands on the same slots the client predicted, so the player sees no
+     * flicker; {@code broadcastChanges} then confirms the slots back to the client immediately.
      *
      * <p>VERIFY against 26.1.2 mappings: {@code Minecraft#getSingleplayerServer()},
      * {@code MinecraftServer#getPlayerList().getPlayer(UUID)}, {@code ServerPlayer#getInventory()},
@@ -178,15 +230,10 @@ public final class ShulkerExtractionService {
                 if (serverPlayer == null) {
                     return;
                 }
-                Inventory serverInventory = serverPlayer.getInventory();
-                Optional<ExtractionResult> maybe = ShulkerInventoryHelper.findAndExtract(
-                        serverInventory, targetItem, config.scanOffhand, config.preferLargestStack);
-                if (maybe.isEmpty()) {
-                    return; // server no longer has it in a box; leave its state untouched.
+                Outcome outcome = applyExtraction(serverPlayer.getInventory(), targetItem, hotbarSlot, config);
+                if (outcome == null || outcome.aborted()) {
+                    return; // nothing in a box, or aborted identically to the client.
                 }
-                ExtractionResult serverResult = maybe.get();
-                serverInventory.setItem(serverResult.playerSlot(), serverResult.updatedShulkerStack());
-                serverInventory.setItem(hotbarSlot, serverResult.extractedStack());
                 serverPlayer.inventoryMenu.broadcastChanges();
             } catch (RuntimeException e) {
                 // NFR-04: never crash the server thread; the client prediction simply reverts.
@@ -195,6 +242,7 @@ public final class ShulkerExtractionService {
             }
         });
     }
+
 
     /** FR-06 hotbar slot selection. */
     private static int chooseHotbarSlot(Inventory inventory, HotbarSlotStrategy strategy) {

@@ -17,15 +17,27 @@ import net.minecraft.world.item.ItemStack;
  * {@code HudRenderCallback} to a layered HUD registration API.
  */
 public final class PickBlockHud {
-    private static ItemStack stack = ItemStack.EMPTY;
+    private static Component message;
     private static int remainingTicks;
 
     private PickBlockHud() {
     }
 
-    /** Starts the notification for the configured duration. */
+    /** Starts the "pulled from a shulker box" notification for the configured duration. */
     public static void show(ItemStack extracted) {
-        stack = extracted == null ? ItemStack.EMPTY : extracted.copy();
+        if (extracted == null || extracted.isEmpty()) {
+            return;
+        }
+        showMessage(Component.translatable("hud.shulkerpickblock.picked", extracted.getHoverName()));
+    }
+
+    /**
+     * Shows an arbitrary message above the hotbar for the configured duration. Used for the
+     * item-conservation notices (held item swapped into the box / pick declined), so they reach the
+     * player without depending on a version-fragile chat/action-bar API.
+     */
+    public static void showMessage(Component text) {
+        message = text;
         remainingTicks = ModConfig.get().hudMessageDurationTicks;
     }
 
@@ -38,7 +50,7 @@ public final class PickBlockHud {
 
     /** Draws the notification just above the hotbar while it is active. */
     public static void render(GuiGraphicsExtractor context) {
-        if (remainingTicks <= 0 || stack.isEmpty()) {
+        if (remainingTicks <= 0 || message == null) {
             return;
         }
         Minecraft client = Minecraft.getInstance();
@@ -46,7 +58,6 @@ public final class PickBlockHud {
             return;
         }
 
-        Component message = Component.translatable("hud.shulkerpickblock.picked", stack.getHoverName());
         int width = client.font.width(message);
         int x = (context.guiWidth() - width) / 2;
         int y = context.guiHeight() - 59 - 13;
