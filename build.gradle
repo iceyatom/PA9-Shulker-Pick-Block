@@ -1,5 +1,6 @@
 plugins {
-    id 'fabric-loom' version '1.17.11'
+    id 'net.fabricmc.fabric-loom' version '1.15-SNAPSHOT'
+    id 'java'
     id 'maven-publish'
 }
 
@@ -43,10 +44,8 @@ dependencies {
     // Set `yarn_mappings` in gradle.properties to the exact build your Trade Reorder mod
     // uses. If you prefer Mojang official mappings, comment the line below and use:
     //   mappings loom.officialMojangMappings()
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
 java {

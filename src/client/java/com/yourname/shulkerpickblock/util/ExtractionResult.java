@@ -1,6 +1,6 @@
 package com.yourname.shulkerpickblock.util;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * The outcome of a successful shulker-box scan (SRS §7.4).

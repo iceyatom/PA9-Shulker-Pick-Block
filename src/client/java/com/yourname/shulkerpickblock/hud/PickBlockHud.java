@@ -1,10 +1,10 @@
 package com.yourname.shulkerpickblock.hud;
 
 import com.yourname.shulkerpickblock.config.ModConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * A brief, self-expiring HUD notification shown when an item is pulled from a shulker box
@@ -37,23 +37,23 @@ public final class PickBlockHud {
     }
 
     /** Draws the notification just above the hotbar while it is active. */
-    public static void render(DrawContext context) {
+    public static void render(GuiGraphicsExtractor context) {
         if (remainingTicks <= 0 || stack.isEmpty()) {
             return;
         }
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.textRenderer == null) {
+        Minecraft client = Minecraft.getInstance();
+        if (client == null || client.font == null) {
             return;
         }
 
-        Text message = Text.translatable("hud.shulkerpickblock.picked", stack.getName());
-        int width = client.textRenderer.getWidth(message);
-        int x = (context.getScaledWindowWidth() - width) / 2;
-        int y = context.getScaledWindowHeight() - 59 - 13;
+        Component message = Component.translatable("hud.shulkerpickblock.picked", stack.getHoverName());
+        int width = client.font.width(message);
+        int x = (context.guiWidth() - width) / 2;
+        int y = context.guiHeight() - 59 - 13;
 
         // Fade out over the final 10 ticks.
         int alpha = (int) (Math.min(1.0f, remainingTicks / 10.0f) * 255.0f);
         int color = (alpha << 24) | 0xFFFFFF;
-        context.drawTextWithShadow(client.textRenderer, message, x, y, color);
+        context.text(client.font, message, x, y, color, true);
     }
 }

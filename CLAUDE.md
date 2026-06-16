@@ -100,18 +100,29 @@ version-fragile and need re-checking on 26.1.2:
   /`.fromStacks(List)`, `DataComponentTypes.CONTAINER`, `PlayerInventory.getSelectedSlot()/setSelectedSlot()`
   /`getSwappableHotbarSlot()`, `ClientPlayerInteractionManager.getCurrentGameMode()/clickCreativeStack()`,
   `UpdateSelectedSlotC2SPacket` — all compiled clean vs 1.21.11; re-confirm on 26.1.2.
+- ⚠️ Single-player sync chain (NEW, in `ShulkerExtractionService.syncToIntegratedServer`):
+  `Minecraft.getSingleplayerServer()`, `MinecraftServer.getPlayerList().getPlayer(UUID)`,
+  `ServerPlayer.getInventory()`, the public `ServerPlayer.inventoryMenu` field, and
+  `AbstractContainerMenu.broadcastChanges()` — Mojmap names; **not yet compile-checked** (added after
+  the 1.21.11 validation build). Confirm on the real 26.1.2 mapping set.
 - ⚠️ Mixin `compatibilityLevel` is `JAVA_25` in both mixin JSONs — valid only if the Mixin shipped
   with Loader 0.18.4 defines that enum. Validated at game launch, not at build.
 
 ## Known limitations (honest)
-1. **Survival multiplayer server sync is NOT achievable with vanilla packets.** The SRS §8/PKT-01…06
-   assume an item-form shulker can be opened as a server container and drained with slot-click
-   packets. Vanilla has no such mechanism — only a *placed* shulker has a server container, and the
-   server never expects an item's `CONTAINER` component to change. So: **creative = fully
-   authoritative** (`clickCreativeStack`); **survival = client-side prediction only** (works in
-   single-player until the next authoritative sync; a vanilla server reverts it). **TC-11 cannot
-   pass as written.** Implemented honestly rather than faked. A true survival-server fix needs a
-   server-side companion mod (explicitly out of SRS scope).
+1. **Survival sync works in single-player / LAN-host; a *remote vanilla* server still can't.**
+   Vanilla has no packet that drains an *item-form* shulker box (only a *placed* shulker has a
+   server container, and the server never expects an item's `CONTAINER` component to change). The
+   fix (`ShulkerExtractionService.syncToIntegratedServer`) sidesteps this **without custom packets**
+   by using the fact that in single-player / LAN-host the integrated server runs in the same JVM:
+   after the client prediction, the same extraction is applied to the authoritative `ServerPlayer`
+   inventory on the server thread (`Minecraft.getSingleplayerServer()` → `getPlayerList().getPlayer`
+   → `getInventory().setItem` → `inventoryMenu.broadcastChanges()`), which confirms the prediction
+   instead of reverting it. This is what fixed the original "ghost item snaps back into the box" bug
+   (single-player survival). Paths by connection: **single-player / LAN-host (survival *and*
+   creative) = authoritative**; **remote server + creative = authoritative** via
+   `handleCreativeModeItemAdd`; **remote *vanilla* server + survival = prediction only, reverts** —
+   **TC-11 (remote vanilla survival server) still cannot pass**, and a true fix there needs a
+   server-side companion mod (out of SRS scope).
 2. **Mod Menu config screen (FR-25) is deferred** — config is fully usable via TOML +
    `/shulkerpickblock reload`. A Mod Menu screen needs a `modCompileOnly` Mod Menu dep + a hand-built
    or Cloth Config screen; not implemented. TODO.
@@ -122,8 +133,9 @@ version-fragile and need re-checking on 26.1.2:
 ## Requirements traceability (summary)
 - FR-01..08 (core pick) — ✅ implemented (`Mixin` + `Service` + `Helper`). FR-06 LRU via tracker.
 - FR-09..14 (shulker/data-components) — ✅ via Data Components API; all-variants; FR-13/14 honoured.
-- FR-15 / PKT-01..06 (server sync) — ⚠️ partial: creative authoritative, survival prediction (see
-  limitation 1). PKT-06 (no custom packets) honoured.
+- FR-15 / PKT-01..06 (server sync) — ⚠️ partial: single-player/LAN-host authoritative (survival +
+  creative) via the integrated server; remote creative authoritative; remote vanilla survival still
+  prediction-only (see limitation 1). PKT-06 (no custom packets) honoured.
 - FR-16..22 (Litematica) — ✅ scaffolded with graceful disable; FR-17/18 target method needs verify.
 - FR-23/24 (config + reload) — ✅. FR-25 (Mod Menu) — ❌ deferred.
 - NFR-01..06 perf/safety — ✅ (single-pass scan, try/catch fallback, single mutation).

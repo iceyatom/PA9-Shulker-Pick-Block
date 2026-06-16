@@ -1,13 +1,13 @@
 package com.yourname.shulkerpickblock.util;
 
-import net.minecraft.block.ShulkerBoxBlock;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.ContainerComponent;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
 
 import java.util.Optional;
 
@@ -35,8 +35,8 @@ import java.util.Optional;
  */
 public final class ShulkerInventoryHelper {
 
-    /** Off-hand slot index in {@link PlayerInventory} ({@code PlayerInventory.OFF_HAND_SLOT}). */
-    public static final int OFF_HAND_SLOT = 40;
+    /** Off-hand slot index in {@link Inventory}. */
+    public static final int OFF_HAND_SLOT = Inventory.SLOT_OFFHAND;
 
     /** Highest main-inventory slot (0–35 = 9 hotbar + 27 storage). */
     public static final int MAIN_INVENTORY_MAX = 35;
@@ -59,7 +59,7 @@ public final class ShulkerInventoryHelper {
      *
      * @return a populated plan, or {@link Optional#empty()} if no box holds the item
      */
-    public static Optional<ExtractionResult> findAndExtract(PlayerInventory inventory,
+    public static Optional<ExtractionResult> findAndExtract(Inventory inventory,
                                                             Item targetItem,
                                                             boolean scanOffhand,
                                                             boolean preferLargestStack) {
@@ -73,18 +73,18 @@ public final class ShulkerInventoryHelper {
 
         // Iterate main inventory (0–35) then the off-hand (40); worst case 36×27 + 27 checks (NFR-01).
         for (int playerSlot : scanOrder(scanOffhand)) {
-            ItemStack boxStack = inventory.getStack(playerSlot);
+            ItemStack boxStack = inventory.getItem(playerSlot);
             if (!isShulkerBox(boxStack)) {
                 continue;
             }
 
-            ContainerComponent container = boxStack.getOrDefault(DataComponentTypes.CONTAINER,
-                    ContainerComponent.DEFAULT);
+            ItemContainerContents container = boxStack.getOrDefault(DataComponents.CONTAINER,
+                    ItemContainerContents.EMPTY);
 
             // Find the internal slot in this box with the most of the target item.
             int localSlot = -1;
             int localCount = 0;
-            DefaultedList<ItemStack> contents = toStacks(container);
+            NonNullList<ItemStack> contents = toStacks(container);
             for (int i = 0; i < SHULKER_SLOTS; i++) {
                 ItemStack inner = contents.get(i);
                 if (!inner.isEmpty() && inner.getItem() == targetItem && inner.getCount() > localCount) {
@@ -113,7 +113,7 @@ public final class ShulkerInventoryHelper {
             return Optional.empty();
         }
 
-        return Optional.of(buildResult(inventory.getStack(bestPlayerSlot), bestPlayerSlot, bestInternalSlot));
+        return Optional.of(buildResult(inventory.getItem(bestPlayerSlot), bestPlayerSlot, bestInternalSlot));
     }
 
     /**
@@ -122,14 +122,14 @@ public final class ShulkerInventoryHelper {
      * (possibly empty) shulker box item (FR-14).
      */
     private static ExtractionResult buildResult(ItemStack sourceBox, int playerSlot, int internalSlot) {
-        DefaultedList<ItemStack> contents = toStacks(sourceBox.getOrDefault(
-                DataComponentTypes.CONTAINER, ContainerComponent.DEFAULT));
+        NonNullList<ItemStack> contents = toStacks(sourceBox.getOrDefault(
+                DataComponents.CONTAINER, ItemContainerContents.EMPTY));
 
         ItemStack extracted = contents.get(internalSlot).copy();
         contents.set(internalSlot, ItemStack.EMPTY); // FR-13: emptied internal slot
 
         ItemStack updatedBox = sourceBox.copy();
-        updatedBox.set(DataComponentTypes.CONTAINER, ContainerComponent.fromStacks(contents));
+        updatedBox.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(contents));
 
         return new ExtractionResult(playerSlot, internalSlot, extracted, updatedBox);
     }
@@ -148,12 +148,12 @@ public final class ShulkerInventoryHelper {
      * it and the mod must not interfere (FR-02). Stacks <em>inside</em> shulker boxes do not
      * count here.
      */
-    public static boolean containsDirectly(PlayerInventory inventory, Item targetItem, boolean scanOffhand) {
+    public static boolean containsDirectly(Inventory inventory, Item targetItem, boolean scanOffhand) {
         if (inventory == null || targetItem == null) {
             return false;
         }
         for (int slot : scanOrder(scanOffhand)) {
-            ItemStack stack = inventory.getStack(slot);
+            ItemStack stack = inventory.getItem(slot);
             if (!stack.isEmpty() && stack.getItem() == targetItem) {
                 return true;
             }
@@ -174,9 +174,9 @@ public final class ShulkerInventoryHelper {
     }
 
     /** Copies a CONTAINER component into a fixed 27-slot list, preserving slot positions. */
-    private static DefaultedList<ItemStack> toStacks(ContainerComponent container) {
-        DefaultedList<ItemStack> stacks = DefaultedList.ofSize(SHULKER_SLOTS, ItemStack.EMPTY);
-        container.copyTo(stacks);
+    private static NonNullList<ItemStack> toStacks(ItemContainerContents container) {
+        NonNullList<ItemStack> stacks = NonNullList.withSize(SHULKER_SLOTS, ItemStack.EMPTY);
+        container.copyInto(stacks);
         return stacks;
     }
 }

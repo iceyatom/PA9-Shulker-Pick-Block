@@ -1,8 +1,8 @@
 package com.yourname.shulkerpickblock.compat.litematica.mixin;
 
 import com.yourname.shulkerpickblock.compat.litematica.LitematicaCompat;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
@@ -41,13 +41,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class InventoryUtilsMixin {
 
     @Inject(
-            method = "setPickedItemToHand",
+            method = "setPickedItemToHand(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/client/Minecraft;)V",
             at = @At("HEAD"),
             require = 0,
             expect = 0,
             remap = false
     )
-    private static void shulkerpickblock$beforeSetPickedItem(ItemStack stack, MinecraftClient mc, CallbackInfo ci) {
+    private static void shulkerpickblock$beforeSetPickedItem(ItemStack stack, Minecraft mc, CallbackInfo ci) {
+        LitematicaCompat.handlePick(stack);
+    }
+
+    @Inject(
+            method = "setPickedItemToHand(ILnet/minecraft/world/item/ItemStack;Lnet/minecraft/client/Minecraft;)V",
+            at = @At("HEAD"),
+            require = 0,
+            expect = 0,
+            remap = false
+    )
+    private static void shulkerpickblock$beforeSetPickedItemInSlot(int slot, ItemStack stack, Minecraft mc,
+                                                                   CallbackInfo ci) {
         LitematicaCompat.handlePick(stack);
     }
 }

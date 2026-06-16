@@ -5,9 +5,9 @@ import com.yourname.shulkerpickblock.config.ModConfig;
 import com.yourname.shulkerpickblock.inventory.ShulkerExtractionService;
 import com.yourname.shulkerpickblock.util.ShulkerInventoryHelper;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Optional Litematica Easy Place integration (SRS §4.3).
@@ -59,7 +59,7 @@ public final class LitematicaCompat {
             if (!isActive() || requiredStack == null || requiredStack.isEmpty()) {
                 return;
             }
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (client == null || client.player == null) {
                 return;
             }

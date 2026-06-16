@@ -3,15 +3,15 @@ package com.yourname.shulkerpickblock.mixin.client;
 import com.yourname.shulkerpickblock.config.ModConfig;
 import com.yourname.shulkerpickblock.inventory.ShulkerExtractionService;
 import com.yourname.shulkerpickblock.util.ShulkerInventoryHelper;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -40,25 +40,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * {@code crosshairTarget}/{@code world}/{@code player} on {@code MinecraftClient}, and the
  * pick-stack resolution call in {@link #shulkerpickblock$resolvePickStack}.
  */
-@Mixin(MinecraftClient.class)
+@Mixin(Minecraft.class)
 public abstract class MinecraftClientPickBlockMixin {
 
-    @Inject(method = "doItemPick", at = @At("TAIL"))
+    @Inject(method = "pickBlockOrEntity", at = @At("TAIL"))
     private void shulkerpickblock$afterPick(CallbackInfo ci) {
         ModConfig config = ModConfig.get();
         if (!config.enabled) {
             return;
         }
 
-        MinecraftClient client = (MinecraftClient) (Object) this;
-        ClientPlayerEntity player = client.player;
-        ClientWorld world = client.world;
+        Minecraft client = (Minecraft) (Object) this;
+        LocalPlayer player = client.player;
+        ClientLevel world = client.level;
         if (player == null || world == null) {
             return;
         }
 
         // Only block picks are in scope (entities can't be stored in shulker boxes).
-        HitResult hit = client.crosshairTarget;
+        HitResult hit = client.hitResult;
         if (!(hit instanceof BlockHitResult blockHit) || hit.getType() != HitResult.Type.BLOCK) {
             return;
         }
@@ -90,7 +90,7 @@ public abstract class MinecraftClientPickBlockMixin {
      * overload is protected). VERIFY unchanged in 26.1.2. {@code includeData=false} matches a plain
      * (non-ctrl) pick, which is all this mod needs since it matches by item identity.
      */
-    private static ItemStack shulkerpickblock$resolvePickStack(BlockState state, ClientWorld world, BlockPos pos) {
-        return state.getPickStack(world, pos, false);
+    private static ItemStack shulkerpickblock$resolvePickStack(BlockState state, ClientLevel world, BlockPos pos) {
+        return state.getCloneItemStack(world, pos, false);
     }
 }
