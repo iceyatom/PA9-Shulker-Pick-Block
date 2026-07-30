@@ -17,6 +17,9 @@
   "entrypoints": {
     "client": [
       "com.yourname.shulkerpickblock.ShulkerPickBlockClient"
+    ],
+    "modmenu": [
+      "com.yourname.shulkerpickblock.compat.modmenu.ModMenuIntegration"
     ]
   },
   "mixins": [

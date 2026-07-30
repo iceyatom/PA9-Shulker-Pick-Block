@@ -2,5 +2,46 @@
   "hud.shulkerpickblock.picked": "Pulled %s from a shulker box",
   "message.shulkerpickblock.swapped_into_box": "Stored %s in the shulker box to make room",
   "message.shulkerpickblock.hand_full": "No room to pick %s — your held shulker box can't be stored",
-  "text.shulkerpickblock.config.title": "ShulkerPickBlock"
+
+  "text.shulkerpickblock.config.title": "PA9 Shulker Pick Block",
+  "text.shulkerpickblock.config.hint": "Saved to config/shulkerpickblock.toml when you press Done.",
+  "text.shulkerpickblock.config.reset": "Reset to Defaults",
+  "text.shulkerpickblock.config.reset.tooltip": "Restores every option above to its default. Press Done to keep it.",
+  "text.shulkerpickblock.config.ticks": "%s ticks",
+
+  "text.shulkerpickblock.config.enabled": "Mod Enabled",
+  "text.shulkerpickblock.config.enabled.tooltip": "Master toggle. When off, pick block behaves exactly like vanilla.",
+
+  "text.shulkerpickblock.config.scan_offhand": "Scan Off-Hand",
+  "text.shulkerpickblock.config.scan_offhand.tooltip": "Also search a shulker box held in your off-hand, not just the main inventory.",
+
+  "text.shulkerpickblock.config.source_selection": "Source Selection",
+  "text.shulkerpickblock.config.source_selection.tooltip": "Which matching stack to pull when several carried boxes hold the item.",
+  "text.shulkerpickblock.config.source_selection.largest_stack": "Largest Stack",
+  "text.shulkerpickblock.config.source_selection.largest_stack.tooltip": "Take from the biggest matching stack. Keeps stacks whole and leaves partial stacks alone.",
+  "text.shulkerpickblock.config.source_selection.smallest_stack": "Smallest Stack",
+  "text.shulkerpickblock.config.source_selection.smallest_stack.tooltip": "Take from the smallest matching stack. Uses up leftovers first and consolidates boxes over time.",
+  "text.shulkerpickblock.config.source_selection.first_found": "First Found",
+  "text.shulkerpickblock.config.source_selection.first_found.tooltip": "Take the first match in slot order (inventory slots, then off-hand). Fully predictable.",
+
+  "text.shulkerpickblock.config.hotbar_slot_strategy": "Hotbar Slot",
+  "text.shulkerpickblock.config.hotbar_slot_strategy.tooltip": "Which hotbar slot receives the extracted item.",
+  "text.shulkerpickblock.config.hotbar_slot_strategy.vanilla": "Vanilla",
+  "text.shulkerpickblock.config.hotbar_slot_strategy.vanilla.tooltip": "The slot vanilla pick block would use: an empty hotbar slot if there is one, otherwise the selected slot.",
+  "text.shulkerpickblock.config.hotbar_slot_strategy.current_slot": "Current Slot",
+  "text.shulkerpickblock.config.hotbar_slot_strategy.current_slot.tooltip": "Always the hotbar slot you have selected.",
+  "text.shulkerpickblock.config.hotbar_slot_strategy.lru": "Least Recently Used",
+  "text.shulkerpickblock.config.hotbar_slot_strategy.lru.tooltip": "The hotbar slot you have gone the longest without holding.",
+
+  "text.shulkerpickblock.config.show_hud_message": "HUD Notification",
+  "text.shulkerpickblock.config.show_hud_message.tooltip": "Show a brief on-screen note when an item is pulled out of a shulker box.",
+
+  "text.shulkerpickblock.config.hud_message_duration_ticks": "HUD Duration",
+  "text.shulkerpickblock.config.hud_message_duration_ticks.tooltip": "How long the HUD notification stays on screen. 20 ticks = 1 second.",
+
+  "text.shulkerpickblock.config.litematica_compat": "Litematica Easy Place",
+  "text.shulkerpickblock.config.litematica_compat.tooltip": "Supply blocks from your shulker boxes to Litematica's Easy Place. Ignored if Litematica isn't installed.",
+
+  "text.shulkerpickblock.config.debug_logging": "Debug Logging",
+  "text.shulkerpickblock.config.debug_logging.tooltip": "Write verbose scan diagnostics to the game log. Development use only."
 }

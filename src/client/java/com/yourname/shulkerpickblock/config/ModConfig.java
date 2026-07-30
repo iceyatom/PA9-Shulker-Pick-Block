@@ -31,10 +31,15 @@ public final class ModConfig {
 
     private static volatile ModConfig INSTANCE = new ModConfig();
 
+    /** Lower bound of {@link #hudMessageDurationTicks}, exposed for the config screen's slider. */
+    public static final int HUD_DURATION_MIN_TICKS = HUD_DURATION_MIN;
+    /** Upper bound of {@link #hudMessageDurationTicks}, exposed for the config screen's slider. */
+    public static final int HUD_DURATION_MAX_TICKS = HUD_DURATION_MAX;
+
     // ---- Options (defaults per SRS §6) ----
     public boolean enabled = true;
     public boolean scanOffhand = true;
-    public boolean preferLargestStack = true;
+    public SourceSelectionStrategy sourceSelection = SourceSelectionStrategy.DEFAULT;
     public HotbarSlotStrategy hotbarSlotStrategy = HotbarSlotStrategy.VANILLA;
     public boolean showHudMessage = true;
     public int hudMessageDurationTicks = 40;
@@ -43,6 +48,39 @@ public final class ModConfig {
 
     public static ModConfig get() {
         return INSTANCE;
+    }
+
+    /** A copy of this config — used by the config screen so Cancel can discard edits. */
+    public ModConfig copy() {
+        ModConfig c = new ModConfig();
+        c.enabled = enabled;
+        c.scanOffhand = scanOffhand;
+        c.sourceSelection = sourceSelection;
+        c.hotbarSlotStrategy = hotbarSlotStrategy;
+        c.showHudMessage = showHudMessage;
+        c.hudMessageDurationTicks = hudMessageDurationTicks;
+        c.litematicaCompat = litematicaCompat;
+        c.debugLogging = debugLogging;
+        return c;
+    }
+
+    /**
+     * Makes {@code cfg} the active config and writes it to disk (used by the config screen's
+     * Save button, FR-25). Never throws: a failed write is logged and the in-memory values are
+     * still applied, so the screen's edits always take effect for the session.
+     */
+    public static void apply(ModConfig cfg) {
+        cfg.clamp();
+        INSTANCE = cfg;
+        try {
+            cfg.save(configPath());
+        } catch (IOException | RuntimeException e) {
+            ShulkerPickBlock.LOGGER.warn("Failed to write {}; changes apply to this session only. Cause: {}",
+                    FILE_NAME, e.toString());
+        }
+        if (cfg.debugLogging) {
+            ShulkerPickBlock.LOGGER.info("Config saved: {}", cfg.summary());
+        }
     }
 
     private static Path configPath() {
@@ -81,13 +119,32 @@ public final class ModConfig {
     private void applyFrom(Map<String, String> v) {
         enabled = boolOr(v, "enabled", enabled);
         scanOffhand = boolOr(v, "scan_offhand", scanOffhand);
-        preferLargestStack = boolOr(v, "prefer_largest_stack", preferLargestStack);
+        sourceSelection = readSourceSelection(v);
         hotbarSlotStrategy = HotbarSlotStrategy.fromString(v.getOrDefault("hotbar_slot_strategy",
                 hotbarSlotStrategy.name()));
         showHudMessage = boolOr(v, "show_hud_message", showHudMessage);
         hudMessageDurationTicks = intOr(v, "hud_message_duration_ticks", hudMessageDurationTicks);
         litematicaCompat = boolOr(v, "litematica_compat", litematicaCompat);
         debugLogging = boolOr(v, "debug_logging", debugLogging);
+    }
+
+    /**
+     * Reads {@code source_selection}, falling back to the pre-1.1.0 boolean
+     * {@code prefer_largest_stack} key so existing config files keep their meaning
+     * ({@code true} → {@code LARGEST_STACK}, {@code false} → {@code FIRST_FOUND}). The legacy
+     * key is not written back, so it disappears the first time the file is rewritten.
+     */
+    private SourceSelectionStrategy readSourceSelection(Map<String, String> v) {
+        String value = v.get("source_selection");
+        if (value != null) {
+            return SourceSelectionStrategy.fromString(value);
+        }
+        if (v.containsKey("prefer_largest_stack")) {
+            return boolOr(v, "prefer_largest_stack", true)
+                    ? SourceSelectionStrategy.LARGEST_STACK
+                    : SourceSelectionStrategy.FIRST_FOUND;
+        }
+        return sourceSelection;
     }
 
     private void clamp() {
@@ -115,9 +172,12 @@ public final class ModConfig {
         comment(sb, "Include the off-hand slot when searching for shulker boxes.");
         sb.append("scan_offhand = ").append(scanOffhand).append("\n\n");
 
-        comment(sb, "Prefer the shulker box containing the most of the target item (FR-07).");
-        comment(sb, "If false, uses first-found order.");
-        sb.append("prefer_largest_stack = ").append(preferLargestStack).append("\n\n");
+        comment(sb, "LARGEST_STACK | SMALLEST_STACK | FIRST_FOUND — which matching stack to pull");
+        comment(sb, "when several carried boxes hold the target item (FR-07).");
+        comment(sb, "  LARGEST_STACK  = biggest stack wins; keeps stacks whole.");
+        comment(sb, "  SMALLEST_STACK = smallest stack wins; uses up leftovers first.");
+        comment(sb, "  FIRST_FOUND    = first match in slot order.");
+        sb.append("source_selection = \"").append(sourceSelection.name()).append("\"\n\n");
 
         comment(sb, "VANILLA | CURRENT_SLOT | LRU — which hotbar slot receives the item (FR-06).");
         sb.append("hotbar_slot_strategy = \"").append(hotbarSlotStrategy.name()).append("\"\n\n");
@@ -142,8 +202,8 @@ public final class ModConfig {
 
     public String summary() {
         return String.format(Locale.ROOT,
-                "enabled=%s scanOffhand=%s preferLargest=%s strategy=%s hud=%s/%dt litematica=%s debug=%s",
-                enabled, scanOffhand, preferLargestStack, hotbarSlotStrategy, showHudMessage,
+                "enabled=%s scanOffhand=%s source=%s strategy=%s hud=%s/%dt litematica=%s debug=%s",
+                enabled, scanOffhand, sourceSelection, hotbarSlotStrategy, showHudMessage,
                 hudMessageDurationTicks, litematicaCompat, debugLogging);
     }
 
@@ -220,7 +280,7 @@ public final class ModConfig {
         List<String> out = new ArrayList<>();
         out.add("enabled = " + enabled);
         out.add("scan_offhand = " + scanOffhand);
-        out.add("prefer_largest_stack = " + preferLargestStack);
+        out.add("source_selection = " + sourceSelection);
         out.add("hotbar_slot_strategy = " + hotbarSlotStrategy);
         out.add("show_hud_message = " + showHudMessage);
         out.add("hud_message_duration_ticks = " + hudMessageDurationTicks);

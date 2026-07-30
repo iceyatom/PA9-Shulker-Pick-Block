@@ -15,6 +15,13 @@ repositories {
     // The Litematica compat layer uses @Pseudo soft-target mixins (string class
     // targets, no imports), so NO compile-time Litematica dependency is required.
     // If you ever decide to compile directly against Litematica, add masa's maven here.
+    maven {
+        name = 'Terraformers'
+        url = 'https://maven.terraformersmc.com/releases/'
+        content {
+            includeGroup 'com.terraformersmc'
+        }
+    }
     mavenCentral()
 }
 
@@ -43,6 +50,17 @@ dependencies {
     // "Build Environment Findings". Do not set `yarn_mappings`; none are published for 26.x.
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Mod Menu is compile-only (FR-25): it supplies the `ModMenuApi` / `ConfigScreenFactory`
+    // interfaces implemented by `compat.modmenu.ModMenuIntegration`, but is NOT required at
+    // runtime. Loader only instantiates the `modmenu` entrypoint when Mod Menu is installed,
+    // so that class is never loaded otherwise and no NoClassDefFoundError is possible.
+    // The config screen itself uses only vanilla widgets, so nothing else here depends on it.
+    // `compileOnly`, not `modCompileOnly`: Loom 1.15 dropped the `mod*` configurations because
+    // 26.x needs no remapping (Mojmap identity mappings) — same reason fabric-api above is on a
+    // plain `implementation`. `transitive = false` keeps Mod Menu's own dependency tree out of
+    // our compile classpath; we only need its two API interfaces.
+    compileOnly("com.terraformersmc:modmenu:${project.mod_menu_version}") { transitive = false }
 }
 
 java {

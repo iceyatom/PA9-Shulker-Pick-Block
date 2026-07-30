@@ -1,5 +1,6 @@
 package com.yourname.shulkerpickblock.util;
 
+import com.yourname.shulkerpickblock.config.SourceSelectionStrategy;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.player.Inventory;
@@ -52,19 +53,24 @@ public final class ShulkerInventoryHelper {
      * if found, returns a plan to extract one internal stack of it (FR-03 … FR-08).
      *
      * <p>Nested shulker boxes are intentionally not recursed into (FR-11). The off-hand box is
-     * included only when {@code scanOffhand} is true (FR-10). When {@code preferLargestStack} is
-     * true, the box whose largest single internal stack of the target is biggest wins, to avoid
-     * splitting partial stacks across boxes (FR-07); otherwise the first match in slot order is
-     * used.
+     * included only when {@code scanOffhand} is true (FR-10). Which of several matching stacks
+     * wins is decided by {@code strategy} (FR-07) — see {@link SourceSelectionStrategy}. The
+     * ranking is applied both <em>within</em> a box (across its 27 internal slots) and
+     * <em>between</em> boxes, so the chosen stack is the global best under that strategy;
+     * {@link SourceSelectionStrategy#FIRST_FOUND} instead stops at the very first match in slot
+     * order.
      *
      * @return a populated plan, or {@link Optional#empty()} if no box holds the item
      */
     public static Optional<ExtractionResult> findAndExtract(Inventory inventory,
                                                             Item targetItem,
                                                             boolean scanOffhand,
-                                                            boolean preferLargestStack) {
+                                                            SourceSelectionStrategy strategy) {
         if (inventory == null || targetItem == null) {
             return Optional.empty();
+        }
+        if (strategy == null) {
+            strategy = SourceSelectionStrategy.DEFAULT;
         }
 
         int bestPlayerSlot = -1;
@@ -81,15 +87,21 @@ public final class ShulkerInventoryHelper {
             ItemContainerContents container = boxStack.getOrDefault(DataComponents.CONTAINER,
                     ItemContainerContents.EMPTY);
 
-            // Find the internal slot in this box with the most of the target item.
+            // Pick this box's best matching internal slot under the active strategy.
             int localSlot = -1;
             int localCount = 0;
             NonNullList<ItemStack> contents = toStacks(container);
             for (int i = 0; i < SHULKER_SLOTS; i++) {
                 ItemStack inner = contents.get(i);
-                if (!inner.isEmpty() && inner.getItem() == targetItem && inner.getCount() > localCount) {
+                if (inner.isEmpty() || inner.getItem() != targetItem) {
+                    continue;
+                }
+                if (localSlot < 0 || strategy.isBetter(inner.getCount(), localCount)) {
                     localCount = inner.getCount();
                     localSlot = i;
+                    if (strategy.stopsAtFirstMatch()) {
+                        break;
+                    }
                 }
             }
 
@@ -97,14 +109,13 @@ public final class ShulkerInventoryHelper {
                 continue; // this box doesn't contain the target
             }
 
-            if (localCount > bestCount) {
+            if (bestPlayerSlot < 0 || strategy.isBetter(localCount, bestCount)) {
                 bestCount = localCount;
                 bestPlayerSlot = playerSlot;
                 bestInternalSlot = localSlot;
             }
 
-            if (!preferLargestStack) {
-                // First-found order: stop at the first box that has the item.
+            if (strategy.stopsAtFirstMatch()) {
                 break;
             }
         }

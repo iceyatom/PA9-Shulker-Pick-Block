@@ -159,7 +159,7 @@ public final class ShulkerExtractionService {
      */
     private static Outcome applyExtraction(Inventory inv, Item targetItem, int hotbarSlot, ModConfig config) {
         Optional<ExtractionResult> maybe = ShulkerInventoryHelper.findAndExtract(
-                inv, targetItem, config.scanOffhand, config.preferLargestStack);
+                inv, targetItem, config.scanOffhand, config.sourceSelection);
         if (maybe.isEmpty()) {
             return null;
         }

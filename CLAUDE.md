@@ -8,7 +8,9 @@ A **client-side Fabric mod** for **Minecraft Java 26.2** that extends vanilla pi
 targeted item, and place it in the hotbar — with optional **Litematica Easy Place** integration.
 Built from `../ShulkerPickBlock_ModRequirements_v2.pdf` (SRS v2.0). FR/NFR/PKT/TC IDs below refer
 to that document. Package requirements (originally targeting 26.1.2) were bumped to **26.2** on
-2026-07-02; no mod functionality or `mod_version` changed in that update.
+2026-07-02; no mod functionality or `mod_version` changed in that update. **1.1.0 (2026-07-29)**
+added the FR-25 in-game settings screen (Mod Menu gear + `/shulkerpickblock config`) and turned the
+`prefer_largest_stack` boolean into the three-way `source_selection` option.
 
 ## ⚠️ Build Environment Findings (READ BEFORE BUILDING)
 
@@ -22,6 +24,7 @@ against MC 26.2. The findings below are empirical (curl + Loom), not assumptions
 | Gradle | ✅ wrapper 9.5.1 | Loom needs Gradle plugin-API 9.5.0+; 9.5.1 satisfies it |
 | Fabric Loom (resolved 1.15.5 from the `1.15-SNAPSHOT` plugin line) | ✅ loads | |
 | Fabric Loader 0.18.4 / Fabric API 0.154.0+26.2 | ✅ on maven | fabric_version bumped from 0.151.0+26.1.2 |
+| Mod Menu 20.0.0-beta.4 (added 2026-07-29) | ✅ on `maven.terraformersmc.com/releases` | Not in that repo's `maven-metadata.xml` (it lags) but the jar 200s. Declared as plain **`compileOnly` with `transitive = false`** — Loom 1.15 has **no `mod*` configurations** (`modCompileOnly` fails with "Could not find method"), because 26.x needs no remapping; same reason fabric-api uses `implementation`. |
 | **Mappings for 26.2** | ✅ **not needed** | `gradlew build` succeeded with **no `mappings` dependency declared at all** — Loom deobfuscates 26.2 as an identity step. See corrected understanding below. |
 
 ### Corrected understanding (supersedes the 2026-06-14 "cannot compile" finding)
@@ -92,9 +95,26 @@ No `yarn_mappings` / `mappings` setup is needed — see the Build Environment Fi
 - `mixin/client/MinecraftClientPickBlockMixin` — vanilla hook. **Targets `MinecraftClient.doItemPick()`
   at TAIL**, not `ClientPlayerInteractionManager` as SRS §7.1 guessed (that method only fires on the
   found-in-inventory path). Acts only when vanilla couldn't supply the item.
-- `config/ModConfig` + `HotbarSlotStrategy` — flat-TOML read/write (no external dep), all SRS §6
-  options, reloadable (FR-24).
-- `command/ShulkerPickBlockCommands` — `/shulkerpickblock reload|status` via `fabric-command-api-v2`.
+- `config/ModConfig` + `HotbarSlotStrategy` + `SourceSelectionStrategy` — flat-TOML read/write (no
+  external dep), all SRS §6 options, reloadable (FR-24). `ModConfig.apply(cfg)` is the write path
+  used by the GUI (swap active instance + save), mirroring `load()`'s swap so the two can't drift.
+  `source_selection` (LARGEST_STACK | SMALLEST_STACK | FIRST_FOUND) replaced the 1.0.0 boolean
+  `prefer_largest_stack`; the legacy key is still read once for migration in `readSourceSelection`.
+- `gui/ShulkerPickBlockConfigScreen` — the FR-25 settings screen, **vanilla widgets only** (no Cloth
+  Config/YACL). Edits a `ModConfig.copy()` so Cancel/Escape discards. Reachable from Mod Menu's gear
+  and from `/shulkerpickblock config`. 26.2 GUI notes: screens are opened/closed via
+  **`Minecraft.gui.setScreen(screen)`** (`Minecraft.setScreen` no longer exists; `setScreenAndShow`
+  is the same thing plus a forced frame), rendering goes through `extractRenderState(
+  GuiGraphicsExtractor, …)` so **no render override is needed**, and the layout stack
+  (`HeaderAndFooterLayout`/`GridLayout`/`LinearLayout`) is unchanged from 1.21.x. The layout object
+  is rebuilt inside `init()` — it re-runs on resize and on `rebuildWidgets()` (Reset), and re-adding
+  to a retained layout stacks duplicate widgets.
+- `compat/modmenu/ModMenuIntegration` — `ModMenuApi` impl behind the `modmenu` entrypoint (key
+  string verified by `javap` on the installed Mod Menu). Mod Menu is **`compileOnly`** (see below);
+  only Mod Menu reads that entrypoint, so the class never loads without it — no `NoClassDefFoundError`.
+- `command/ShulkerPickBlockCommands` — `/shulkerpickblock config|reload|status` via
+  `fabric-command-api-v2`. `config` defers `gui.setScreen` through `Minecraft.execute` because the
+  chat screen is still closing when the command body runs.
 - `hud/PickBlockHud` — self-expiring "pulled from shulker" notification (FR-08).
 - `compat/litematica/` — `LitematicaCompat` (detect + runtime gate), `LitematicaMixinPlugin`
   (class-presence gate, FR-22), `mixin/InventoryUtilsMixin` (`@Pseudo` soft-target, `require=0`).
@@ -143,9 +163,8 @@ the rest are runtime-resolved or version-fragile and need re-checking in-game on
    `handleCreativeModeItemAdd`; **remote *vanilla* server + survival = prediction only, reverts** —
    **TC-11 (remote vanilla survival server) still cannot pass**, and a true fix there needs a
    server-side companion mod (out of SRS scope).
-2. **Mod Menu config screen (FR-25) is deferred** — config is fully usable via TOML +
-   `/shulkerpickblock reload`. A Mod Menu screen needs a `modCompileOnly` Mod Menu dep + a hand-built
-   or Cloth Config screen; not implemented. TODO.
+2. ~~**Mod Menu config screen (FR-25) is deferred**~~ — **implemented in 1.1.0** (`gui/
+   ShulkerPickBlockConfigScreen` + `compat/modmenu/ModMenuIntegration`). Still unverified in-game.
 3. **Litematica Easy Place hook** targets the confirmed `InventoryUtils.schematicWorldPickBlock`
    (explicit Mojmap descriptor — the 26.x runtime uses Mojang names, verified by `javap` on the
    installed `litematica-fabric-26.1.2-0.27.4.jar`). **Root-cause bug found & fixed:** the mixin was
@@ -166,7 +185,7 @@ the rest are runtime-resolved or version-fragile and need re-checking in-game on
   creative) via the integrated server; remote creative authoritative; remote vanilla survival still
   prediction-only (see limitation 1). PKT-06 (no custom packets) honoured.
 - FR-16..22 (Litematica) — ✅ scaffolded with graceful disable; FR-17/18 target method needs verify.
-- FR-23/24 (config + reload) — ✅. FR-25 (Mod Menu) — ❌ deferred.
+- FR-23/24 (config + reload) — ✅. FR-25 (Mod Menu) — ✅ as of 1.1.0 (needs in-game verify).
 - NFR-01..06 perf/safety — ✅ (single-pass scan, try/catch fallback, single mutation).
 - NFR-10..13 maintainability — ✅ (Javadoc on mixins, helper isolated, compat in own package).
 - TC-01..07,13,14 — should pass in **singleplayer/creative**. TC-08/09 (Easy Place) — depends on the
@@ -194,5 +213,7 @@ compile time, not runtime behaviour).
 3. Confirm the Litematica `InventoryUtils` target method against a 26.2-compatible Litematica
    build (the sakura-ryoko fork build referenced elsewhere in this file was verified against
    26.1.2, not yet 26.2); update `InventoryUtilsMixin.method` if it moved.
-4. Implement the Mod Menu screen (FR-25).
+4. ~~Implement the Mod Menu screen (FR-25).~~ Done in 1.1.0 — now needs an in-game pass: gear
+   icon appears in Mod Menu, all 8 widgets render without overlap, Done writes the TOML, Cancel
+   discards, Reset restores defaults, `/shulkerpickblock config` opens it with Mod Menu absent.
 5. If the HUD misbehaves at runtime on 26.2, port `PickBlockHud` to `HudElementRegistry`.
