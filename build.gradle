@@ -38,12 +38,9 @@ loom {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-    // SRS-preferred mapping set. NOTE: a Yarn build for 26.x must be available to your
-    // Gradle (it is published for real 26.1.2 toolchains but was NOT reachable from the
-    // sandbox this was authored in — see CLAUDE.md "Build Environment Findings").
-    // Set `yarn_mappings` in gradle.properties to the exact build your Trade Reorder mod
-    // uses. If you prefer Mojang official mappings, comment the line below and use:
-    //   mappings loom.officialMojangMappings()
+    // No `mappings` dependency: 26.x Minecraft jars ship with real (Mojmap) names already,
+    // and Fabric's intermediary/Yarn pipeline stops at 1.21.11 — see CLAUDE.md
+    // "Build Environment Findings". Do not set `yarn_mappings`; none are published for 26.x.
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }

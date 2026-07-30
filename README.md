@@ -1,6 +1,6 @@
 # ShulkerPickBlock
 
-A **client-side Fabric mod** for **Minecraft Java Edition 26.1.2** that extends vanilla **pick block**
+A **client-side Fabric mod** for **Minecraft Java Edition 26.2** that extends vanilla **pick block**
 (middle-click) to reach inside the shulker boxes in your inventory.
 
 When you pick-block a placed block and the matching item isn't in your hotbar or main inventory,
@@ -8,11 +8,10 @@ ShulkerPickBlock scans the shulker boxes you're carrying (including your off-han
 out, and puts it in your hand — **no need to place the shulker box down first.** It also hooks
 **Litematica's Easy Place** so shulker-stored blocks are supplied automatically while you build.
 
-> Status: **built and verified in-game on Minecraft 26.1.2** (Fabric Loader 0.19.2, Fabric API
-> 0.151.0+26.1.2). Vanilla pick-block-from-shulker works in single-player survival and creative, and
-> the **Litematica Easy Place** integration is confirmed working against Litematica
-> `0.27.4` (the sakura-ryoko 26.x fork). Builds with **Mojang official mappings** — see
-> [Building](#building) and `CLAUDE.md`.
+> Status: **package requirements updated and jar rebuilt for Minecraft 26.2** (Fabric Loader
+> 0.18.4+, Fabric API 0.154.0+26.2). Builds with **Mojang official mappings** — see
+> [Building](#building) and `CLAUDE.md`. In-game verification against 26.2 (pick-block behaviour and
+> the Litematica Easy Place integration) is still pending — see `CLAUDE.md` TODOs.
 
 ## Features
 - **Pick block from inventory shulker boxes** — main inventory (slots 0–35) and the off-hand.
@@ -35,18 +34,18 @@ out, and puts it in your hand — **no need to place the shulker box down first.
 ## Requirements
 | | Version |
 |---|---|
-| Minecraft | Java Edition **26.1.2** |
+| Minecraft | Java Edition **26.2** |
 | Fabric Loader | **0.18.4+** |
-| Fabric API | **0.150.0+26.1.2** |
-| Java | **25** (required by MC 26.1.x) |
+| Fabric API | **0.154.0+26.2** |
+| Java | **25** (required by MC 26.x) |
 | Optional | Litematica (Easy Place), Mod Menu |
 
 ## Installation
-1. Install **Fabric Loader 0.18.4** for Minecraft 26.1.2 via the Fabric installer.
-2. Put **Fabric API 0.150.0+26.1.2** in `.minecraft/mods/`.
+1. Install **Fabric Loader 0.18.4** for Minecraft 26.2 via the Fabric installer.
+2. Put **Fabric API 0.154.0+26.2** in `.minecraft/mods/`.
 3. Put **`shulker-pick-block-1.0.0.jar`** in `.minecraft/mods/`.
 4. *(Optional)* Add a compatible **Litematica** build for Easy Place integration.
-5. Launch the `fabric-loader-26.1.2` profile.
+5. Launch the `fabric-loader-26.2` profile.
 
 ## Usage
 Middle-click (pick block) a block as usual. If the item isn't already in your inventory but is
@@ -94,12 +93,11 @@ gradlew.bat build                        # Windows   (./gradlew build on macOS/L
 # -> build/libs/shulker-pick-block-1.0.0.jar
 ```
 
-**Mappings note.** This builds against **26.1.2 with Mojang official mappings**
-(`loom.officialMojangMappings()` in `build.gradle`) — the 26.x runtime uses Mojang names, so the
-source is written in Mojmap (`Minecraft`, `MultiPlayerGameMode`, `ServerPlayer`, etc.). Yarn builds
-for 26.x are not published, so do **not** set `yarn_mappings`. If `gradlew build` reports a missing
-mappings configuration, ensure `build.gradle`'s `dependencies` block contains
-`mappings loom.officialMojangMappings()`.
+**Mappings note.** 26.x Minecraft client/server jars ship with real (Mojmap) names baked in —
+Fabric's `intermediary`/Yarn pipeline no longer publishes past 1.21.11, and no explicit `mappings`
+dependency is needed in `build.gradle` (Loom deobfuscates as an identity step). Source is written in
+Mojmap (`Minecraft`, `MultiPlayerGameMode`, `ServerPlayer`, etc.) to match. Do **not** set
+`yarn_mappings`.
 
 ## Compatibility
 - Survival and creative game modes (see survival-multiplayer note above).
