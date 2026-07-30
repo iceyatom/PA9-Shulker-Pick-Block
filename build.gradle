@@ -88,8 +88,18 @@ processResources {
     }
 }
 
+// Matches the naming convention used by the other mods in this modpack, e.g.
+// "logstripper - 26.2 - 1.0.0.jar": "<name> - <minecraft_version> - <mod_version>".
+def outputBaseName = "${project.archives_base_name} - ${project.minecraft_version} - ${project.mod_version}"
+
 jar {
+    archiveFileName = "${outputBaseName}.jar"
+
     from("LICENSE") {
         rename { "${it}_${project.archives_base_name}" }
     }
+}
+
+sourcesJar {
+    archiveFileName = "${outputBaseName}-sources.jar"
 }

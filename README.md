@@ -49,8 +49,8 @@ out, and puts it in your hand — **no need to place the shulker box down first.
 ## Installation
 1. Install **Fabric Loader 0.18.4** for Minecraft 26.2 via the Fabric installer.
 2. Put **Fabric API 0.154.0+26.2** in `.minecraft/mods/`.
-3. Put **`shulker-pick-block-1.1.0.jar`** in `.minecraft/mods/` (delete any older
-   `shulker-pick-block-*.jar` first — two copies of the same mod id won't load).
+3. Put **`shulker-pick-block - 26.2 - 1.1.0.jar`** in `.minecraft/mods/` (delete any older
+   `shulker-pick-block*.jar` first — two copies of the same mod id won't load).
 4. *(Optional)* Add a compatible **Litematica** build for Easy Place integration, and **Mod Menu**
    for the settings gear button.
 5. Launch the `fabric-loader-26.2` profile.
@@ -109,7 +109,7 @@ cd shulker-pick-block
 java -version                            # must report 25
 gradle wrapper --gradle-version 9.5.1    # once
 gradlew.bat build                        # Windows   (./gradlew build on macOS/Linux)
-# -> build/libs/shulker-pick-block-1.1.0.jar
+# -> build/libs/shulker-pick-block - 26.2 - 1.1.0.jar
 ```
 
 Mod Menu is a **compile-only** dependency (pulled from `maven.terraformersmc.com`), needed just for

@@ -70,7 +70,9 @@ cd shulker-pick-block
 java -version                       # must report 25
 gradle wrapper --gradle-version 9.5.1   # once; 9.5.0+ required by Loom
 gradlew.bat build                   # Windows (./gradlew build on macOS/Linux)
-# Output: build/libs/shulker-pick-block-1.0.0.jar  <- install this
+# Output: build/libs/shulker-pick-block - 26.2 - 1.1.0.jar  <- install this
+# (filename follows the modpack convention "<name> - <minecraft_version> - <mod_version>.jar",
+# set via jar.archiveFileName in build.gradle — matches e.g. "logstripper - 26.2 - 1.0.0.jar")
 ```
 No `yarn_mappings` / `mappings` setup is needed — see the Build Environment Findings above.
 
