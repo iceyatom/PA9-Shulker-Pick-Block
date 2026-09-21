@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.15-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version '1.18-SNAPSHOT'
     id 'java'
     id 'maven-publish'
 }
@@ -56,7 +56,7 @@ dependencies {
     // runtime. Loader only instantiates the `modmenu` entrypoint when Mod Menu is installed,
     // so that class is never loaded otherwise and no NoClassDefFoundError is possible.
     // The config screen itself uses only vanilla widgets, so nothing else here depends on it.
-    // `compileOnly`, not `modCompileOnly`: Loom 1.15 dropped the `mod*` configurations because
+    // `compileOnly`, not `modCompileOnly`: Loom 1.15+ dropped the `mod*` configurations because
     // 26.x needs no remapping (Mojmap identity mappings) — same reason fabric-api above is on a
     // plain `implementation`. `transitive = false` keeps Mod Menu's own dependency tree out of
     // our compile classpath; we only need its two API interfaces.
@@ -89,7 +89,7 @@ processResources {
 }
 
 // Matches the naming convention used by the other mods in this modpack, e.g.
-// "logstripper - 26.2 - 1.0.0.jar": "<name> - <minecraft_version> - <mod_version>".
+// "logstripper - 26.3 - 1.0.0.jar": "<name> - <minecraft_version> - <mod_version>".
 def outputBaseName = "${project.archives_base_name} - ${project.minecraft_version} - ${project.mod_version}"
 
 jar {
