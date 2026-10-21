@@ -1,14 +1,17 @@
 # ShulkerPickBlock
 
-A **client-side Fabric mod** for **Minecraft Java Edition 26.2** that extends vanilla **pick block**
-(middle-click) to reach inside the shulker boxes in your inventory.
+A **Fabric mod** for **Minecraft Java Edition 26.3** that extends vanilla **pick block**
+(middle-click) to reach inside the shulker boxes in your inventory. Install it on the **client**;
+also install it on a **server** to make it work in survival multiplayer there (see
+[Client and server](#client-and-server)).
 
 When you pick-block a placed block and the matching item isn't in your hotbar or main inventory,
 ShulkerPickBlock scans the shulker boxes you're carrying (including your off-hand), pulls the item
 out, and puts it in your hand — **no need to place the shulker box down first.** It also hooks
 **Litematica's Easy Place** so shulker-stored blocks are supplied automatically while you build.
 
-> Status: **1.1.0 — in-game settings screen added** (Mod Menu gear button + `/shulkerpickblock
+> Status: **1.1.1 — client + server.** The same jar now also runs on a dedicated server, which
+> makes survival picks stick on multiplayer servers. Earlier: **1.1.0 — in-game settings screen added** (Mod Menu gear button + `/shulkerpickblock
 > config`), and smart source selection is now a three-way choice instead of a boolean. Built for
 > Minecraft 26.2 (Fabric Loader 0.18.4+, Fabric API 0.154.0+26.2) with **Mojang official
 > mappings** — see [Building](#building) and `CLAUDE.md`. In-game verification against 26.2
@@ -49,11 +52,13 @@ out, and puts it in your hand — **no need to place the shulker box down first.
 ## Installation
 1. Install **Fabric Loader 0.18.4** for Minecraft 26.2 via the Fabric installer.
 2. Put **Fabric API 0.154.0+26.2** in `.minecraft/mods/`.
-3. Put **`shulker-pick-block - 26.2 - 1.1.0.jar`** in `.minecraft/mods/` (delete any older
+3. Put **`shulker-pick-block - 26.3 - 1.1.1.jar`** in `.minecraft/mods/` (delete any older
    `shulker-pick-block*.jar` first — two copies of the same mod id won't load).
 4. *(Optional)* Add a compatible **Litematica** build for Easy Place integration, and **Mod Menu**
    for the settings gear button.
-5. Launch the `fabric-loader-26.2` profile.
+5. Launch the `fabric-loader-26.3` profile.
+6. *(Servers)* Put the same jar plus Fabric API in the server's `mods/` folder. Players without
+   the mod can still join; it only does something for players who have it.
 
 ## Usage
 Middle-click (pick block) a block as usual. If the item isn't already in your inventory but is
@@ -89,17 +94,19 @@ Two equivalent ways to change any setting:
 migrated automatically on load (`true` → `LARGEST_STACK`, `false` → `FIRST_FOUND`) and the old key
 is dropped when the file is rewritten.
 
-## Important limitation — remote (vanilla) servers
-This mod is **fully authoritative in single-player and on a LAN world you host** — in both
-**survival and creative**. The extraction is mirrored onto the integrated server's inventory (it
-runs in the same process), so the item really moves and stays put rather than reverting.
+## Client and server
+The same jar works on both sides. What you get depends on where it is installed:
 
-**On a *remote* vanilla server it cannot truly sync** in survival: Minecraft provides no packet to
-modify an item-form shulker box's contents (only a *placed* box has a server-side container), so the
-extraction is client-side prediction only and the server will revert it. (Remote **creative** still
-works, via creative-mode slot packets.) This is a Minecraft protocol limitation, not a bug — a real
-fix for remote survival would need a server-side companion mod (out of scope). See `CLAUDE.md` for
-the full technical explanation.
+| Client | Server | Result |
+|---|---|---|
+| ✅ | single-player / LAN you host | Works in survival and creative (the built-in server runs the mod too). |
+| ✅ | ✅ dedicated server with the mod | Works in survival and creative. The client sends a small request packet (`shulkerpickblock:pick_from_shulker`) and the server performs the same extraction on your real inventory. |
+| ✅ | ❌ server without the mod | Creative works (creative slot packets). **Survival is client-side only and gets reverted by the server**, because vanilla has no packet that changes a shulker box item's contents. |
+| ❌ | ✅ | Nothing happens for that player; joining is not affected. |
+
+The server only rearranges items the player already has (the item comes out of a box in their own
+inventory and anything displaced goes back into that box), so the request can't create or delete
+items. See `CLAUDE.md` for the technical details.
 
 ## Building
 Requires **JDK 25** and **Gradle 9.5+** (Fabric Loom 1.17.11 needs Gradle plugin API 9.5.0+).
@@ -109,7 +116,7 @@ cd shulker-pick-block
 java -version                            # must report 25
 gradle wrapper --gradle-version 9.5.1    # once
 gradlew.bat build                        # Windows   (./gradlew build on macOS/Linux)
-# -> build/libs/shulker-pick-block - 26.2 - 1.1.0.jar
+# -> build/libs/shulker-pick-block - 26.3 - 1.1.1.jar
 ```
 
 Mod Menu is a **compile-only** dependency (pulled from `maven.terraformersmc.com`), needed just for
@@ -122,7 +129,7 @@ Mojmap (`Minecraft`, `MultiPlayerGameMode`, `ServerPlayer`, etc.) to match. Do *
 `yarn_mappings`.
 
 ## Compatibility
-- Survival and creative game modes (see survival-multiplayer note above).
+- Survival and creative game modes (see [Client and server](#client-and-server)).
 - No server-side mod required for single-player/creative; designed not to disturb other
   inventory mods (e.g. Inventory Profiles Next, Mouse Tweaks) that don't intercept pick block at
   the same point.
