@@ -12,6 +12,35 @@ to that document. Package requirements (originally targeting 26.1.2) were bumped
 added the FR-25 in-game settings screen (Mod Menu gear + `/shulkerpickblock config`) and turned the
 `prefer_largest_stack` boolean into the three-way `source_selection` option.
 
+## Branch `Client-Server` — 1.1.1, client + server (2026-10-21)
+Cut from `main` (26.3). The mod now runs on both sides; `fabric.mod.json` `environment` is `"*"`
+with a new `main` entrypoint (`ShulkerPickBlock`). Mixins stay client-only.
+- **Source sets:** shared code moved to `src/main/java` (loaded on dedicated servers, must not touch
+  client classes): `ShulkerPickBlock` (common entrypoint + constants), `config/SourceSelectionStrategy`,
+  `util/ShulkerInventoryHelper`, `util/ExtractionResult`, `inventory/ShulkerExtraction` (the one
+  mutation, formerly `ShulkerExtractionService.applyExtraction`), `network/PickFromShulkerPayload`,
+  `network/ServerPickHandler`. Everything else stays in `src/client`.
+- **Packet:** C2S `shulkerpickblock:pick_from_shulker` = (item via `ByteBufCodecs.registry(Registries.ITEM)`,
+  hotbar slot, scanOffhand, source strategy ordinal). Registered with
+  `PayloadTypeRegistry.serverboundPlay()` (26.3 Fabric API name — not `playC2S`). The server
+  re-runs `ShulkerExtraction.apply` on the real inventory then `inventoryMenu.broadcastChanges()`;
+  on bad input / no match / abort it calls `sendAllDataToRemote()` so the client's prediction is
+  corrected. Client settings ride along so both sides choose the same box and slot.
+- **Client sync order** (`ShulkerExtractionService.syncAuthoritative`): packet if
+  `ClientPlayNetworking.canSend(TYPE)` (true in single-player too) → integrated-server direct apply →
+  creative slot packets → prediction only. A client-only install behaves exactly like 1.1.0.
+- **Verified 2026-10-21:** dev `runServer` + `runClient` with temporary probes, survival, full hotbar:
+  with the server handler the pick stuck on both sides (stone to slot 0, dirt swapped into the box);
+  with the handler disabled the client got `canSend=false`, logged the warning, server unchanged,
+  no disconnect. Production: the final jar on a real Fabric 0.19.5 dedicated server (official
+  server launcher) reached `Done`, and a production client with the jar joined it and stayed connected.
+- Dev test gotchas: `run/` is shared by runServer and runClient; a fresh dev server has
+  `white-list=true`; first-run client screens (accessibility onboarding, multiplayer warning) block
+  `--quickPlayMultiplayer` until `options.txt` sets `onboardAccessibility:false` and
+  `skipMultiplayerWarning:true`; pass `runClient --args` from PowerShell, not Git Bash (the
+  path with spaces breaks `gradlew.bat`).
+- The "Known limitations 1 / TC-11" text below is now only true when the **server lacks the mod**.
+
 ## ⚠️ Build Environment Findings (READ BEFORE BUILDING)
 
 This was authored in a sandbox on 2026-06-14 against MC 26.1.2 and re-validated on 2026-07-02

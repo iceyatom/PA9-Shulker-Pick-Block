@@ -3,7 +3,7 @@
   "id": "shulkerpickblock",
   "version": "${version}",
   "name": "PA9 Shulker Pick Block",
-  "description": "Pick block from shulker boxes in your inventory without placing them. Extends vanilla middle-click pick block to scan inventory shulker boxes (and the off-hand), with optional Litematica Easy Place integration.",
+  "description": "Pick block from shulker boxes in your inventory without placing them. Extends vanilla middle-click pick block to scan inventory shulker boxes (and the off-hand), with optional Litematica Easy Place integration. Install on the client; also install on the server to make it work in survival on multiplayer servers.",
   "authors": [
     "PersonalAtom9"
   ],
@@ -13,8 +13,11 @@
   },
   "license": "MIT",
   "icon": "assets/shulkerpickblock/icon.png",
-  "environment": "client",
+  "environment": "*",
   "entrypoints": {
+    "main": [
+      "com.yourname.shulkerpickblock.ShulkerPickBlock"
+    ],
     "client": [
       "com.yourname.shulkerpickblock.ShulkerPickBlockClient"
     ],
