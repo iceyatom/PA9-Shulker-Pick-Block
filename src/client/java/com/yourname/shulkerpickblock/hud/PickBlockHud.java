@@ -2,7 +2,7 @@ package com.yourname.shulkerpickblock.hud;
 
 import com.yourname.shulkerpickblock.config.ModConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -49,7 +49,7 @@ public final class PickBlockHud {
     }
 
     /** Draws the notification just above the hotbar while it is active. */
-    public static void render(GuiGraphicsExtractor context) {
+    public static void render(GuiGraphics context) {
         if (remainingTicks <= 0 || message == null) {
             return;
         }
@@ -65,6 +65,6 @@ public final class PickBlockHud {
         // Fade out over the final 10 ticks.
         int alpha = (int) (Math.min(1.0f, remainingTicks / 10.0f) * 255.0f);
         int color = (alpha << 24) | 0xFFFFFF;
-        context.text(client.font, message, x, y, color, true);
+        context.drawString(client.font, message, x, y, color, true);
     }
 }
