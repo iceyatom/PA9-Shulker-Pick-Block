@@ -8,9 +8,7 @@ import com.yourname.shulkerpickblock.util.HotbarUsageTracker;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-import net.minecraft.resources.Identifier;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 
 /**
  * Client entrypoint (declared under {@code entrypoints.client} in {@code fabric.mod.json}).
@@ -50,10 +48,9 @@ public class ShulkerPickBlockClient implements ClientModInitializer {
             PickBlockHud.tick();
         });
 
-        HudElementRegistry.attachElementBefore(
-                VanillaHudElements.HELD_ITEM_TOOLTIP,
-                Identifier.fromNamespaceAndPath(ShulkerPickBlock.MOD_ID, "picked_item"),
-                (context, tickCounter) -> PickBlockHud.render(context));
+        // Fabric's HudElementRegistry only exists from 1.21.6; before that the HUD hook is
+        // HudRenderCallback, which draws after the vanilla HUD layers.
+        HudRenderCallback.EVENT.register((context, tickCounter) -> PickBlockHud.render(context));
 
         LitematicaCompat.init();
 
