@@ -10,9 +10,11 @@ import com.yourname.shulkerpickblock.network.PickFromShulkerPayload;
 import com.yourname.shulkerpickblock.util.ExtractionResult;
 import com.yourname.shulkerpickblock.util.ShulkerInventoryHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.server.MinecraftServer;
@@ -153,8 +155,11 @@ public final class ShulkerExtractionService {
         ExtractionResult result = outcome.result();
         if (ClientPlayNetworking.canSend(PickFromShulkerPayload.TYPE)) {
             // Sent after the ServerboundSetCarriedItemPacket above, on the same ordered connection.
-            ClientPlayNetworking.send(new PickFromShulkerPayload(targetItem, hotbarSlot,
-                    config.scanOffhand, config.sourceSelection));
+            // Raw channel before 1.19.4: write the request into a buffer and send it on its channel.
+            FriendlyByteBuf buf = PacketByteBufs.create();
+            new PickFromShulkerPayload(targetItem, hotbarSlot,
+                    config.scanOffhand, config.sourceSelection).write(buf);
+            ClientPlayNetworking.send(PickFromShulkerPayload.TYPE, buf);
             return;
         }
         MinecraftServer server = client.getSingleplayerServer();
@@ -232,17 +237,17 @@ public final class ShulkerExtractionService {
         return playerSlot; // 9–35 map 1:1
     }
 
-    // --- selected-slot access centralised here; VERIFY against 26.1.2 Yarn ---
-    // Recent MC encapsulated the old public `selectedSlot` field behind
-    // getSelectedSlot()/setSelectedSlot(int). If 26.1.2 still exposes the field, swap these two.
+    // --- selected-slot access centralised here ---
+    // Before 1.21.5 the selected hotbar slot is the public `Inventory.selected` field
+    // (26.x encapsulates it behind getSelectedSlot()/setSelectedSlot(int)).
 
     private static int getSelectedSlot(Inventory inventory) {
-        return inventory.getSelectedSlot();
+        return inventory.selected;
     }
 
     private static void setSelectedSlot(Minecraft client, LocalPlayer player,
                                         Inventory inventory, int slot) {
-        inventory.setSelectedSlot(slot);
+        inventory.selected = slot;
         if (client.getConnection() != null) {
             client.getConnection().send(new ServerboundSetCarriedItemPacket(slot));
         }

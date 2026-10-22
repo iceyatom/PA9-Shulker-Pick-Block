@@ -2,12 +2,9 @@ package com.yourname.shulkerpickblock.network;
 
 import com.yourname.shulkerpickblock.ShulkerPickBlock;
 import com.yourname.shulkerpickblock.config.SourceSelectionStrategy;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
 /**
@@ -17,36 +14,34 @@ import net.minecraft.world.item.Item;
  *
  * <p>The client's selection settings travel with the request so the server's re-scan picks exactly
  * the same box and internal slot as the client's prediction.
+ *
+ * <p>Before 1.19.4 Fabric API has no typed packets ({@code FabricPacket}, later
+ * {@code CustomPacketPayload}), only raw channels: {@link #TYPE} is the channel id and the request
+ * is written to / read from a {@link FriendlyByteBuf}. The wire format is the same as the 1.20.5+
+ * codec: item registry id (VarInt), hotbar slot (VarInt), scan-offhand flag, strategy ordinal.
  */
 public record PickFromShulkerPayload(Item item, int hotbarSlot, boolean scanOffhand,
-                                     SourceSelectionStrategy strategy) implements CustomPacketPayload {
+                                     SourceSelectionStrategy strategy) {
 
-    public static final Type<PickFromShulkerPayload> TYPE = new Type<>(
-            Identifier.fromNamespaceAndPath(ShulkerPickBlock.MOD_ID, "pick_from_shulker"));
+    public static final ResourceLocation TYPE = new ResourceLocation(ShulkerPickBlock.MOD_ID, "pick_from_shulker");
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, Item> ITEM_CODEC =
-            ByteBufCodecs.registry(Registries.ITEM);
+    public static PickFromShulkerPayload read(FriendlyByteBuf buf) {
+        return new PickFromShulkerPayload(
+                BuiltInRegistries.ITEM.byIdOrThrow(buf.readVarInt()),
+                buf.readVarInt(),
+                buf.readBoolean(),
+                strategyFromOrdinal(buf.readVarInt()));
+    }
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, PickFromShulkerPayload> CODEC = StreamCodec.of(
-            (buf, payload) -> {
-                ITEM_CODEC.encode(buf, payload.item());
-                buf.writeVarInt(payload.hotbarSlot());
-                buf.writeBoolean(payload.scanOffhand());
-                buf.writeVarInt(payload.strategy().ordinal());
-            },
-            buf -> new PickFromShulkerPayload(
-                    ITEM_CODEC.decode(buf),
-                    buf.readVarInt(),
-                    buf.readBoolean(),
-                    strategyFromOrdinal(buf.readVarInt())));
+    public void write(FriendlyByteBuf buf) {
+        buf.writeId(BuiltInRegistries.ITEM, item);
+        buf.writeVarInt(hotbarSlot);
+        buf.writeBoolean(scanOffhand);
+        buf.writeVarInt(strategy.ordinal());
+    }
 
     private static SourceSelectionStrategy strategyFromOrdinal(int ordinal) {
         SourceSelectionStrategy[] values = SourceSelectionStrategy.values();
         return ordinal >= 0 && ordinal < values.length ? values[ordinal] : SourceSelectionStrategy.DEFAULT;
-    }
-
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
     }
 }
