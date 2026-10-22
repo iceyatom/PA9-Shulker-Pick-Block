@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
  *                            (0–35 main, or {@link ShulkerInventoryHelper#OFF_HAND_SLOT})
  * @param internalSlot        slot inside the shulker box (0–26) the item was taken from
  * @param extractedStack      the stack removed from the shulker box (one full internal stack)
- * @param updatedShulkerStack the shulker box item with its CONTAINER component updated to
+ * @param updatedShulkerStack the shulker box item with its stored contents (NBT) updated to
  *                            reflect the removal (FR-13); stays a valid, possibly-empty
  *                            shulker box item rather than being consumed (FR-14)
  */
