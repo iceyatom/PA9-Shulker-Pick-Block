@@ -56,12 +56,15 @@ public abstract class InventoryUtilsMixin {
      * The actual Easy Place / schematic pick-block item-supply call — confirmed via {@code javap} on
      * {@code litematica-fabric-26.1.2-0.27.4.jar}: both {@code WorldUtils.doEasyPlaceAction} and
      * {@code WorldUtils.doSchematicWorldPickBlock} invoke this exact method. The descriptor below is
-     * the verbatim runtime signature (the 26.x runtime uses Mojang names, so {@code remap = false}
-     * with these literal names matches directly). We pre-stage the item from a shulker box at HEAD so
+     * the runtime signature. Pre-26.x Minecraft is obfuscated and Litematica runs under
+     * <b>intermediary</b> names in production, so the descriptors here use the intermediary class
+     * names ({@code class_1799} = ItemStack, {@code class_2338} = BlockPos, {@code class_1937} =
+     * Level, {@code class_310} = Minecraft); {@code remap = false} keeps them verbatim. (The 26.x
+     * branches use the Mojang names, which is what 26.x runs under.) We pre-stage the item from a shulker box at HEAD so
      * Litematica's own inventory lookup that follows then finds it loose and swaps it to hand.
      */
     @Inject(
-            method = "schematicWorldPickBlock(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/Level;Lnet/minecraft/client/Minecraft;)V",
+            method = "schematicWorldPickBlock(Lnet/minecraft/class_1799;Lnet/minecraft/class_2338;Lnet/minecraft/class_1937;Lnet/minecraft/class_310;)V",
             at = @At("HEAD"),
             require = 0,
             expect = 0,
@@ -74,7 +77,7 @@ public abstract class InventoryUtilsMixin {
     }
 
     @Inject(
-            method = "setPickedItemToHand(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/client/Minecraft;)V",
+            method = "setPickedItemToHand(Lnet/minecraft/class_1799;Lnet/minecraft/class_310;)V",
             at = @At("HEAD"),
             require = 0,
             expect = 0,
@@ -85,7 +88,7 @@ public abstract class InventoryUtilsMixin {
     }
 
     @Inject(
-            method = "setPickedItemToHand(ILnet/minecraft/world/item/ItemStack;Lnet/minecraft/client/Minecraft;)V",
+            method = "setPickedItemToHand(ILnet/minecraft/class_1799;Lnet/minecraft/class_310;)V",
             at = @At("HEAD"),
             require = 0,
             expect = 0,

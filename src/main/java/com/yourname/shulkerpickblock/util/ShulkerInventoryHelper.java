@@ -2,13 +2,15 @@ package com.yourname.shulkerpickblock.util;
 
 import com.yourname.shulkerpickblock.config.SourceSelectionStrategy;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;
 
 import java.util.Optional;
 
@@ -29,8 +31,8 @@ import java.util.Optional;
  * against the actual 26.1.2 Yarn build (no Yarn build was reachable when this was authored):
  * <ul>
  *   <li>{@code ShulkerBoxBlock}, {@code BlockItem#getBlock()}</li>
- *   <li>{@code DataComponentTypes.CONTAINER} → {@code ContainerComponent}</li>
- *   <li>{@code ContainerComponent#copyTo(DefaultedList)} and {@code ContainerComponent.fromStacks(List)}</li>
+ *   <li>Before 1.20.5: contents in NBT {@code BlockEntityTag.Items}, read/written with
+ *       {@code ContainerHelper.loadAllItems/saveAllItems} (see {@code toStacks}/{@code writeStacks})</li>
  *   <li>{@code PlayerInventory#getStack(int)} indexing; off-hand at slot 40</li>
  * </ul>
  */
@@ -84,13 +86,11 @@ public final class ShulkerInventoryHelper {
                 continue;
             }
 
-            ItemContainerContents container = boxStack.getOrDefault(DataComponents.CONTAINER,
-                    ItemContainerContents.EMPTY);
 
             // Pick this box's best matching internal slot under the active strategy.
             int localSlot = -1;
             int localCount = 0;
-            NonNullList<ItemStack> contents = toStacks(container);
+            NonNullList<ItemStack> contents = toStacks(boxStack);
             for (int i = 0; i < SHULKER_SLOTS; i++) {
                 ItemStack inner = contents.get(i);
                 if (inner.isEmpty() || inner.getItem() != targetItem) {
@@ -129,18 +129,17 @@ public final class ShulkerInventoryHelper {
 
     /**
      * Builds the immutable extraction plan from copies of the source box: removes the chosen
-     * internal stack (FR-13) and updates the box's CONTAINER component, leaving a still-valid
+     * internal stack (FR-13) and updates the box's stored contents (NBT), leaving a still-valid
      * (possibly empty) shulker box item (FR-14).
      */
     private static ExtractionResult buildResult(ItemStack sourceBox, int playerSlot, int internalSlot) {
-        NonNullList<ItemStack> contents = toStacks(sourceBox.getOrDefault(
-                DataComponents.CONTAINER, ItemContainerContents.EMPTY));
+        NonNullList<ItemStack> contents = toStacks(sourceBox);
 
         ItemStack extracted = contents.get(internalSlot).copy();
         contents.set(internalSlot, ItemStack.EMPTY); // FR-13: emptied internal slot
 
         ItemStack updatedBox = sourceBox.copy();
-        updatedBox.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(contents));
+        writeStacks(updatedBox, contents);
 
         return new ExtractionResult(playerSlot, internalSlot, extracted, updatedBox);
     }
@@ -152,11 +151,10 @@ public final class ShulkerInventoryHelper {
      * slot is already occupied and the inventory has no room. Leaves a valid shulker box item.
      */
     public static ItemStack withInternalItem(ItemStack box, int slot, ItemStack stack) {
-        NonNullList<ItemStack> contents = toStacks(box.getOrDefault(
-                DataComponents.CONTAINER, ItemContainerContents.EMPTY));
+        NonNullList<ItemStack> contents = toStacks(box);
         contents.set(slot, stack.copy());
         ItemStack updated = box.copy();
-        updated.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(contents));
+        writeStacks(updated, contents);
         return updated;
     }
 
@@ -199,10 +197,31 @@ public final class ShulkerInventoryHelper {
         return slots;
     }
 
-    /** Copies a CONTAINER component into a fixed 27-slot list, preserving slot positions. */
-    private static NonNullList<ItemStack> toStacks(ItemContainerContents container) {
+    /**
+     * Reads a shulker box item's contents into a fixed 27-slot list, preserving slot positions.
+     * Before 1.20.5 the contents live in NBT ({@code BlockEntityTag.Items}), read the same way the
+     * shulker box block entity loads them ({@link ContainerHelper#loadAllItems}).
+     */
+    private static NonNullList<ItemStack> toStacks(ItemStack box) {
         NonNullList<ItemStack> stacks = NonNullList.withSize(SHULKER_SLOTS, ItemStack.EMPTY);
-        container.copyInto(stacks);
+        CompoundTag tag = BlockItem.getBlockEntityData(box);
+        if (tag != null && tag.contains(ShulkerBoxBlockEntity.ITEMS_TAG, 9)) { // 9 = list tag
+            ContainerHelper.loadAllItems(tag, stacks);
+        }
         return stacks;
+    }
+
+    /**
+     * Writes {@code stacks} back as {@code box}'s contents (the NBT counterpart of setting the
+     * CONTAINER component). Any other block-entity data on the item is kept; an all-empty list
+     * leaves a valid, empty shulker box, exactly as vanilla saves one.
+     */
+    private static void writeStacks(ItemStack box, NonNullList<ItemStack> stacks) {
+        CompoundTag existing = BlockItem.getBlockEntityData(box);
+        CompoundTag tag = existing == null ? new CompoundTag() : existing.copy();
+        tag.remove(ShulkerBoxBlockEntity.ITEMS_TAG);
+        tag.remove("id"); // re-added by setBlockEntityData when the tag is non-empty
+        ContainerHelper.saveAllItems(tag, stacks, false);
+        BlockItem.setBlockEntityData(box, BlockEntityType.SHULKER_BOX, tag);
     }
 }

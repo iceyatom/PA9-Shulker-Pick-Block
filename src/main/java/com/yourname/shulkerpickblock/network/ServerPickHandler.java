@@ -2,7 +2,6 @@ package com.yourname.shulkerpickblock.network;
 
 import com.yourname.shulkerpickblock.ShulkerPickBlock;
 import com.yourname.shulkerpickblock.inventory.ShulkerExtraction;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
@@ -26,10 +25,10 @@ public final class ServerPickHandler {
     }
 
     public static void register() {
-        PayloadTypeRegistry.serverboundPlay().register(PickFromShulkerPayload.TYPE, PickFromShulkerPayload.CODEC);
-        // Fabric runs play-payload handlers on the server thread.
+        // Fabric runs FabricPacket handlers on the server thread. Before 1.20.5 there is no
+        // payload-type registration step: the PacketType carries its own reader.
         ServerPlayNetworking.registerGlobalReceiver(PickFromShulkerPayload.TYPE,
-                (payload, context) -> handle(payload, context.player()));
+                (payload, player, responseSender) -> handle(payload, player));
     }
 
     private static void handle(PickFromShulkerPayload payload, ServerPlayer player) {
