@@ -1,5 +1,6 @@
 package com.yourname.shulkerpickblock.gui;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.yourname.shulkerpickblock.config.HotbarSlotStrategy;
 import com.yourname.shulkerpickblock.config.ModConfig;
 import com.yourname.shulkerpickblock.config.SourceSelectionStrategy;
@@ -11,7 +12,6 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
-import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -59,7 +59,7 @@ public class ShulkerPickBlockConfigScreen extends Screen {
     @Override
     protected void init() {
         this.layout = new HeaderAndFooterLayout(this);
-        this.layout.addTitleHeader(this.title, this.font);
+        this.layout.addToHeader(new StringWidget(this.title, this.font));
 
         GridLayout grid = new GridLayout().spacing(4);
         GridLayout.RowHelper rows = grid.createRowHelper(COLUMNS);
@@ -85,7 +85,9 @@ public class ShulkerPickBlockConfigScreen extends Screen {
 
         this.layout.addToContents(grid);
 
-        LinearLayout footer = this.layout.addToFooter(LinearLayout.horizontal().spacing(8));
+        // A one-row grid with 8px gaps lays the three buttons out like a spaced horizontal row
+        // (LinearLayout has no spacing() before 1.20.3).
+        GridLayout.RowHelper footer = this.layout.addToFooter(new GridLayout().spacing(8)).createRowHelper(3);
         footer.addChild(Button.builder(Component.translatable("text.shulkerpickblock.config.reset"),
                         b -> resetToDefaults())
                 .width(FOOTER_BUTTON_WIDTH)
@@ -107,19 +109,29 @@ public class ShulkerPickBlockConfigScreen extends Screen {
         }
     }
 
+    /**
+     * Before 1.20.2 {@code Screen.render} doesn't draw the background itself, so draw it first
+     * (as that era's vanilla screens do) to get the same dimmed backdrop as the newer releases.
+     */
+    @Override
+    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
+        this.renderBackground(poseStack);
+        super.render(poseStack, mouseX, mouseY, partialTick);
+    }
+
     /** Escape / Cancel: drop the working copy, leaving the active config untouched. */
     @Override
     public void onClose() {
-        // 26.2 moved screen management to Minecraft.gui; a null parent closes the screen
+        // Pre-26.2: screens are set on Minecraft itself; a null parent closes the screen
         // entirely (the /shulkerpickblock config path, which has no parent screen).
-        this.minecraft.gui.setScreen(this.parent);
+        this.minecraft.setScreen(this.parent);
     }
 
     private void saveAndClose() {
         ModConfig.apply(this.working);
-        // 26.2 moved screen management to Minecraft.gui; a null parent closes the screen
+        // Pre-26.2: screens are set on Minecraft itself; a null parent closes the screen
         // entirely (the /shulkerpickblock config path, which has no parent screen).
-        this.minecraft.gui.setScreen(this.parent);
+        this.minecraft.setScreen(this.parent);
     }
 
     /** Restores every option to its default; still needs Done to be written to disk. */
@@ -141,8 +153,9 @@ public class ShulkerPickBlockConfigScreen extends Screen {
      * {@code text.shulkerpickblock.config.<key>.<CONSTANT>} so every state is translatable.
      */
     private <T extends Enum<T>> AbstractWidget cycle(String key, T[] values, T initial, Consumer<T> setter) {
-        return CycleButton.<T>builder(v -> valueLabel(key, v), initial)
+        return CycleButton.<T>builder(v -> valueLabel(key, v))
                 .withValues(values)
+                .withInitialValue(initial)
                 .withTooltip(v -> Tooltip.create(valueTooltip(key, v)))
                 .create(0, 0, OPTION_WIDTH, 20, label(key), (button, value) -> setter.accept(value));
     }

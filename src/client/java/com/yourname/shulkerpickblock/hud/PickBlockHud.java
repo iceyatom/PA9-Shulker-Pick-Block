@@ -2,7 +2,7 @@ package com.yourname.shulkerpickblock.hud;
 
 import com.yourname.shulkerpickblock.config.ModConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -49,7 +49,7 @@ public final class PickBlockHud {
     }
 
     /** Draws the notification just above the hotbar while it is active. */
-    public static void render(GuiGraphicsExtractor context) {
+    public static void render(PoseStack poseStack) {
         if (remainingTicks <= 0 || message == null) {
             return;
         }
@@ -59,12 +59,13 @@ public final class PickBlockHud {
         }
 
         int width = client.font.width(message);
-        int x = (context.guiWidth() - width) / 2;
-        int y = context.guiHeight() - 59 - 13;
+        int x = (client.getWindow().getGuiScaledWidth() - width) / 2;
+        int y = client.getWindow().getGuiScaledHeight() - 59 - 13;
 
         // Fade out over the final 10 ticks.
         int alpha = (int) (Math.min(1.0f, remainingTicks / 10.0f) * 255.0f);
         int color = (alpha << 24) | 0xFFFFFF;
-        context.text(client.font, message, x, y, color, true);
+        // Before 1.20 there is no GuiGraphics; Font.drawShadow is the same shadowed draw.
+        client.font.drawShadow(poseStack, message, x, y, color);
     }
 }

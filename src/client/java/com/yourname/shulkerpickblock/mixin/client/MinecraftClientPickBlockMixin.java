@@ -43,7 +43,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Minecraft.class)
 public abstract class MinecraftClientPickBlockMixin {
 
-    @Inject(method = "pickBlockOrEntity", at = @At("TAIL"))
+    @Inject(method = "pickBlock", at = @At("TAIL"))
     private void shulkerpickblock$afterPick(CallbackInfo ci) {
         ModConfig config = ModConfig.get();
         if (!config.enabled) {
@@ -91,6 +91,6 @@ public abstract class MinecraftClientPickBlockMixin {
      * (non-ctrl) pick, which is all this mod needs since it matches by item identity.
      */
     private static ItemStack shulkerpickblock$resolvePickStack(BlockState state, ClientLevel world, BlockPos pos) {
-        return state.getCloneItemStack(world, pos, false);
+        return state.getBlock().getCloneItemStack(world, pos, state);
     }
 }
