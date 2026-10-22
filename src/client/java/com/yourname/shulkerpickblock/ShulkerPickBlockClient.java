@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * Client entrypoint (declared under {@code entrypoints.client} in {@code fabric.mod.json}).
@@ -52,7 +52,7 @@ public class ShulkerPickBlockClient implements ClientModInitializer {
 
         HudElementRegistry.attachElementBefore(
                 VanillaHudElements.HELD_ITEM_TOOLTIP,
-                Identifier.fromNamespaceAndPath(ShulkerPickBlock.MOD_ID, "picked_item"),
+                ResourceLocation.fromNamespaceAndPath(ShulkerPickBlock.MOD_ID, "picked_item"),
                 (context, tickCounter) -> PickBlockHud.render(context));
 
         LitematicaCompat.init();
