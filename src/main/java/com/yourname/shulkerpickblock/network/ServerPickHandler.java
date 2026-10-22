@@ -26,7 +26,7 @@ public final class ServerPickHandler {
     }
 
     public static void register() {
-        PayloadTypeRegistry.serverboundPlay().register(PickFromShulkerPayload.TYPE, PickFromShulkerPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(PickFromShulkerPayload.TYPE, PickFromShulkerPayload.CODEC);
         // Fabric runs play-payload handlers on the server thread.
         ServerPlayNetworking.registerGlobalReceiver(PickFromShulkerPayload.TYPE,
                 (payload, context) -> handle(payload, context.player()));

@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.18-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom-remap' version '1.18-SNAPSHOT'
     id 'java'
     id 'maven-publish'
 }
@@ -45,38 +45,39 @@ loom {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-    // No `mappings` dependency: 26.x Minecraft jars ship with real (Mojmap) names already,
-    // and Fabric's intermediary/Yarn pipeline stops at 1.21.11 — see CLAUDE.md
-    // "Build Environment Findings". Do not set `yarn_mappings`; none are published for 26.x.
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    // Pre-26.x Minecraft jars are obfuscated, so Loom remaps them. Official Mojang mappings keep
+    // the source on the same Mojmap names as the 26.x branches; the built jar is remapped to
+    // intermediary, as every pre-26.x Fabric mod is.
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     // Mod Menu is compile-only (FR-25): it supplies the `ModMenuApi` / `ConfigScreenFactory`
     // interfaces implemented by `compat.modmenu.ModMenuIntegration`, but is NOT required at
     // runtime. Loader only instantiates the `modmenu` entrypoint when Mod Menu is installed,
     // so that class is never loaded otherwise and no NoClassDefFoundError is possible.
     // The config screen itself uses only vanilla widgets, so nothing else here depends on it.
-    // `compileOnly`, not `modCompileOnly`: Loom 1.15+ dropped the `mod*` configurations because
-    // 26.x needs no remapping (Mojmap identity mappings) — same reason fabric-api above is on a
-    // plain `implementation`. `transitive = false` keeps Mod Menu's own dependency tree out of
-    // our compile classpath; we only need its two API interfaces.
-    compileOnly("com.terraformersmc:modmenu:${project.mod_menu_version}") { transitive = false }
+    // `modCompileOnly` so Loom remaps Mod Menu to the dev mappings. `transitive = false` keeps
+    // Mod Menu's own dependency tree out of our compile classpath; we only need its two API
+    // interfaces.
+    modCompileOnly("com.terraformersmc:modmenu:${project.mod_menu_version}") { transitive = false }
 }
 
 java {
-    // MC 26.1.x requires Java 25 for both compilation and the Gradle toolchain (SRS §2).
+    // Gradle runs on the installed JDK 25 toolchain; `release` below makes javac emit bytecode
+    // for (and reject APIs newer than) the Java version this Minecraft version requires.
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
 
     withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.toVersion(project.java_version)
+    targetCompatibility = JavaVersion.toVersion(project.java_version)
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+    it.options.release = project.java_version as int
     it.options.encoding = 'UTF-8'
 }
 
@@ -92,14 +93,20 @@ processResources {
 // "logstripper - 26.3 - 1.0.0.jar": "<name> - <minecraft_version> - <mod_version>".
 def outputBaseName = "${project.archives_base_name} - ${project.minecraft_version} - ${project.mod_version}"
 
+// The jar Loom builds before remapping is a dev-only intermediate (Mojmap names); keep it
+// marked as such so build/libs holds just the remapped, distributable jar under the modpack name.
 jar {
-    archiveFileName = "${outputBaseName}.jar"
+    archiveClassifier = "dev"
 
     from("LICENSE") {
         rename { "${it}_${project.archives_base_name}" }
     }
 }
 
-sourcesJar {
+remapJar {
+    archiveFileName = "${outputBaseName}.jar"
+}
+
+remapSourcesJar {
     archiveFileName = "${outputBaseName}-sources.jar"
 }

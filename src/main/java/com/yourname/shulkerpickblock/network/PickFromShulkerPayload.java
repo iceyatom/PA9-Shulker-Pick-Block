@@ -7,7 +7,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 
 /**
@@ -22,7 +22,7 @@ public record PickFromShulkerPayload(Item item, int hotbarSlot, boolean scanOffh
                                      SourceSelectionStrategy strategy) implements CustomPacketPayload {
 
     public static final Type<PickFromShulkerPayload> TYPE = new Type<>(
-            Identifier.fromNamespaceAndPath(ShulkerPickBlock.MOD_ID, "pick_from_shulker"));
+            ResourceLocation.fromNamespaceAndPath(ShulkerPickBlock.MOD_ID, "pick_from_shulker"));
 
     private static final StreamCodec<RegistryFriendlyByteBuf, Item> ITEM_CODEC =
             ByteBufCodecs.registry(Registries.ITEM);
