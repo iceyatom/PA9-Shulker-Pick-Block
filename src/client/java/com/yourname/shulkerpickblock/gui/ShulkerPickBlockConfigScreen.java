@@ -110,16 +110,16 @@ public class ShulkerPickBlockConfigScreen extends Screen {
     /** Escape / Cancel: drop the working copy, leaving the active config untouched. */
     @Override
     public void onClose() {
-        // 26.2 moved screen management to Minecraft.gui; a null parent closes the screen
+        // Pre-26.2: screens are set on Minecraft itself; a null parent closes the screen
         // entirely (the /shulkerpickblock config path, which has no parent screen).
-        this.minecraft.gui.setScreen(this.parent);
+        this.minecraft.setScreen(this.parent);
     }
 
     private void saveAndClose() {
         ModConfig.apply(this.working);
-        // 26.2 moved screen management to Minecraft.gui; a null parent closes the screen
+        // Pre-26.2: screens are set on Minecraft itself; a null parent closes the screen
         // entirely (the /shulkerpickblock config path, which has no parent screen).
-        this.minecraft.gui.setScreen(this.parent);
+        this.minecraft.setScreen(this.parent);
     }
 
     /** Restores every option to its default; still needs Done to be written to disk. */
@@ -141,8 +141,9 @@ public class ShulkerPickBlockConfigScreen extends Screen {
      * {@code text.shulkerpickblock.config.<key>.<CONSTANT>} so every state is translatable.
      */
     private <T extends Enum<T>> AbstractWidget cycle(String key, T[] values, T initial, Consumer<T> setter) {
-        return CycleButton.<T>builder(v -> valueLabel(key, v), initial)
+        return CycleButton.<T>builder(v -> valueLabel(key, v))
                 .withValues(values)
+                .withInitialValue(initial)
                 .withTooltip(v -> Tooltip.create(valueTooltip(key, v)))
                 .create(0, 0, OPTION_WIDTH, 20, label(key), (button, value) -> setter.accept(value));
     }

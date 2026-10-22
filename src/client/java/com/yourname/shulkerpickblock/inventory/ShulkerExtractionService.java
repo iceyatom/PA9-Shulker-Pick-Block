@@ -232,17 +232,17 @@ public final class ShulkerExtractionService {
         return playerSlot; // 9–35 map 1:1
     }
 
-    // --- selected-slot access centralised here; VERIFY against 26.1.2 Yarn ---
-    // Recent MC encapsulated the old public `selectedSlot` field behind
-    // getSelectedSlot()/setSelectedSlot(int). If 26.1.2 still exposes the field, swap these two.
+    // --- selected-slot access centralised here ---
+    // Before 1.21.5 the selected hotbar slot is the public `Inventory.selected` field
+    // (26.x encapsulates it behind getSelectedSlot()/setSelectedSlot(int)).
 
     private static int getSelectedSlot(Inventory inventory) {
-        return inventory.getSelectedSlot();
+        return inventory.selected;
     }
 
     private static void setSelectedSlot(Minecraft client, LocalPlayer player,
                                         Inventory inventory, int slot) {
-        inventory.setSelectedSlot(slot);
+        inventory.selected = slot;
         if (client.getConnection() != null) {
             client.getConnection().send(new ServerboundSetCarriedItemPacket(slot));
         }
